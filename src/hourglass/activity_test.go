@@ -34,3 +34,31 @@ func TestIsRunning(t *testing.T) {
     t.Error("expected activity to be running")
   }
 }
+
+func TestTagList(t *testing.T) {
+  activity := Activity{Tags: []string{"foo", "bar", "baz"}}
+  expected := "foo, bar, baz"
+  actual := activity.TagList()
+  if expected != actual {
+    t.Error("expected", expected, "got", actual)
+  }
+}
+
+func TestSetTagList(t *testing.T) {
+  activity := Activity{}
+  activity.SetTagList("foo, bar, baz")
+
+  expected := []string{"foo", "bar", "baz"}
+  fail := len(activity.Tags) != len(expected)
+  if !fail {
+    for i := 0; i < len(expected); i++ {
+      if expected[i] != activity.Tags[i] {
+        fail = true
+        break
+      }
+    }
+  }
+  if fail {
+    t.Error("expected", expected, "got", activity.Tags)
+  }
+}

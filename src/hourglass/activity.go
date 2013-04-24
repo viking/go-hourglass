@@ -1,13 +1,25 @@
 package hourglass
 
-import "time"
+import (
+  "time"
+  "strings"
+)
 
 type Activity struct {
+  Id int64
   Name string
   Project string
   Tags []string
   Start time.Time
   End time.Time
+}
+
+func (a *Activity) TagList() string {
+  return strings.Join(a.Tags, ", ")
+}
+
+func (a *Activity) SetTagList(tagList string) {
+  a.Tags = strings.Split(tagList, ", ")
 }
 
 func (a *Activity) Duration() time.Duration {
