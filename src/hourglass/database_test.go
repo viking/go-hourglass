@@ -11,20 +11,29 @@ import (
 )
 
 func DbTestRun(f func (db *Database), t *testing.T) {
-  dbFile, err := ioutil.TempFile("", "hourglass")
-  if err != nil {
-    t.Error(err)
+  dbFile, tempErr := ioutil.TempFile("", "hourglass")
+  if tempErr != nil {
+    t.Error(tempErr)
   }
-  dbFile.Close()
+  closeErr := dbFile.Close()
+  if closeErr != nil {
+    t.Error(closeErr)
+  }
 
   db := &Database{"sqlite", dbFile.Name()}
-  if ok, dbErr := db.Valid(); !ok {
+
+  var ok bool
+  var dbErr error
+  if ok, dbErr = db.Valid(); !ok {
     if strings.Contains(dbErr.Error(), "unknown driver") {
       sql.Register("sqlite", &sqlite.SQLiteDriver{})
+      ok = true
     } else {
       t.Error(dbErr)
     }
-  } else {
+  }
+
+  if ok {
     migrateErr := db.Migrate()
     if migrateErr != nil {
       t.Error(migrateErr)
