@@ -139,7 +139,7 @@ func (db *Database) SaveActivity(a *Activity) error {
   return err
 }
 
-func (db *Database) GetActivity(id int64) (*Activity, error) {
+func (db *Database) FindActivity(id int64) (*Activity, error) {
   var activity *Activity = nil
   err := &DatabaseErrors{}
 
@@ -172,4 +172,46 @@ func (db *Database) GetActivity(id int64) (*Activity, error) {
     return activity, nil
   }
   return activity, err
+}
+
+func (db *Database) FindAllActivities() ([]*Activity, error) {
+  var activities []*Activity = nil
+  err := &DatabaseErrors{}
+
+  conn, openErr := sql.Open(db.DriverName, db.DataSourceName)
+  if openErr != nil {
+    err.Append(openErr)
+    return activities, err
+  }
+
+  rows, queryErr := conn.Query(`SELECT id, name, project, tags, start, end
+    FROM activities`)
+  if queryErr != nil {
+    err.Append(queryErr)
+  } else {
+    for rows.Next() {
+      var id int64
+      var name, project, tagList string
+      var start, end time.Time
+
+      scanErr := rows.Scan(&id, &name, &project, &tagList, &start, &end)
+      if scanErr == nil {
+        activity := &Activity{Id: id, Name: name, Project: project, Start: start, End: end}
+        activity.SetTagList(tagList)
+        activities = append(activities, activity)
+      } else {
+        err.Append(scanErr)
+      }
+    }
+  }
+
+  connErr := conn.Close()
+  if connErr != nil {
+    err.Append(connErr)
+  }
+
+  if err.IsEmpty() {
+    return activities, nil
+  }
+  return activities, err
 }

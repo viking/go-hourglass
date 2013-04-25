@@ -10,7 +10,7 @@ import (
   sqlite "github.com/mattn/go-sqlite3"
 )
 
-func dbRun(f func (db *Database), t *testing.T) {
+func DbTestRun(f func (db *Database), t *testing.T) {
   dbFile, err := ioutil.TempFile("", "hourglass")
   if err != nil {
     t.Error(err)
@@ -53,22 +53,22 @@ func TestNewActivityRoundTrip(t *testing.T) {
       return
     }
 
-    gotActivity, getErr := db.GetActivity(activity.Id)
-    if getErr != nil {
-      t.Error(getErr)
+    foundActivity, findErr := db.FindActivity(activity.Id)
+    if findErr != nil {
+      t.Error(findErr)
       return
     }
 
-    if gotActivity == nil {
-      t.Error("couldn't get activity")
+    if foundActivity == nil {
+      t.Error("couldn't find activity")
       return
     }
 
-    if !activity.Equal(gotActivity) {
-      t.Error("expected:\n", activity, "\ngot:\n", gotActivity)
+    if !activity.Equal(foundActivity) {
+      t.Error("expected:\n", activity, "\ngot:\n", foundActivity)
     }
   }
-  dbRun(f, t)
+  DbTestRun(f, t)
 }
 
 func TestSaveExistingActivity(t *testing.T) {
@@ -90,20 +90,50 @@ func TestSaveExistingActivity(t *testing.T) {
       return
     }
 
-    gotActivity, getErr := db.GetActivity(activity.Id)
-    if getErr != nil {
-      t.Error(getErr)
+    foundActivity, findErr := db.FindActivity(activity.Id)
+    if findErr != nil {
+      t.Error(findErr)
       return
     }
 
-    if gotActivity == nil {
-      t.Error("couldn't get activity")
+    if foundActivity == nil {
+      t.Error("couldn't find activity")
       return
     }
 
-    if !activity.Equal(gotActivity) {
-      t.Error("expected:\n", activity, "\ngot:\n", gotActivity)
+    if !activity.Equal(foundActivity) {
+      t.Error("expected:\n", activity, "\ngot:\n", foundActivity)
     }
   }
-  dbRun(f, t)
+  DbTestRun(f, t)
+}
+
+func TestFindAllActivities(t *testing.T) {
+  activity := &Activity{Name: "foo", Project: "bar"}
+  activity.End = time.Now().UTC()
+  activity.Start = activity.End.Add(-time.Hour)
+
+  f := func (db *Database) {
+    saveErr := db.SaveActivity(activity)
+    if saveErr != nil {
+      t.Error(saveErr)
+      return
+    }
+
+    activities, findErr := db.FindAllActivities()
+    if findErr != nil {
+      t.Error(findErr)
+      return
+    }
+
+    if len(activities) != 1 {
+      t.Error("expected to find 1 activity, but found", len(activities))
+      return
+    }
+
+    if !activity.Equal(activities[0]) {
+      t.Error("expected:\n", activity, "\ngot:\n", activities[0])
+    }
+  }
+  DbTestRun(f, t)
 }
