@@ -142,44 +142,7 @@ func (db *Database) SaveActivity(a *Activity) error {
   return err
 }
 
-func (db *Database) FindActivity(id int64) (*Activity, error) {
-  var activity *Activity = nil
-  err := &DatabaseErrors{}
-
-  conn, openErr := sql.Open(db.DriverName, db.DataSourceName)
-  if openErr != nil {
-    err.Append(openErr)
-    return activity, err
-  }
-
-  row := conn.QueryRow(`SELECT name, project, tags, start, end
-    FROM activities WHERE id = ?`, id)
-
-  var name, project, tagList string
-  var start, end time.Time
-  scanErr := row.Scan(&name, &project, &tagList, &start, &end)
-
-  if scanErr == nil {
-    activity = &Activity{Id: id, Name: name, Project: project, Start: start, End: end}
-    activity.SetTagList(tagList)
-  } else if scanErr == sql.ErrNoRows {
-    err.Append(ErrNotFound)
-  } else {
-    err.Append(scanErr)
-  }
-
-  connErr := conn.Close()
-  if connErr != nil {
-    err.Append(connErr)
-  }
-
-  if err.IsEmpty() {
-    return activity, nil
-  }
-  return activity, err
-}
-
-func (db *Database) FindAllActivities() ([]*Activity, error) {
+func (db *Database) FindActivities(predicate string, args ...interface{}) ([]*Activity, error) {
   var activities []*Activity = nil
   err := &DatabaseErrors{}
 
@@ -189,8 +152,10 @@ func (db *Database) FindAllActivities() ([]*Activity, error) {
     return activities, err
   }
 
-  rows, queryErr := conn.Query(`SELECT id, name, project, tags, start, end
-    FROM activities`)
+  query := `SELECT id, name, project, tags, start, end
+    FROM activities ` + predicate
+  rows, queryErr := conn.Query(query, args...)
+
   if queryErr != nil {
     err.Append(queryErr)
   } else {
@@ -220,3 +185,25 @@ func (db *Database) FindAllActivities() ([]*Activity, error) {
   }
   return activities, err
 }
+
+func (db *Database) FindActivity(id int64) (*Activity, error) {
+  activities, findErr := db.FindActivities("WHERE id = ?", id)
+  if findErr != nil {
+    return nil, findErr
+  }
+  if len(activities) == 0 {
+    return nil, ErrNotFound
+  }
+  return activities[0], nil
+}
+
+func (db *Database) FindAllActivities() (activities []*Activity, err error) {
+  activities, err = db.FindActivities("")
+  return
+}
+
+func (db *Database) FindRunningActivities() (activities []*Activity, err error) {
+  activities, err = db.FindActivities("WHERE end IS NULL")
+  return
+}
+
