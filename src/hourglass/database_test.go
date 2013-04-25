@@ -47,11 +47,11 @@ func DbTestRun(f func (db *Database), t *testing.T) {
 }
 
 func TestDatabase_SaveActivity(t *testing.T) {
-  activity := &Activity{Name: "foo", Project: "bar"}
-  activity.End = time.Now().UTC()
-  activity.Start = activity.End.Add(-time.Hour)
-
   f := func (db *Database) {
+    activity := &Activity{Name: "foo", Project: "bar"}
+    activity.End = time.Now().UTC()
+    activity.Start = activity.End.Add(-time.Hour)
+
     saveErr := db.SaveActivity(activity)
     if saveErr != nil {
       t.Error(saveErr)
@@ -81,11 +81,11 @@ func TestDatabase_SaveActivity(t *testing.T) {
 }
 
 func TestDatabase_SaveActivity_WithExistingActivity(t *testing.T) {
-  activity := &Activity{Name: "foo", Project: "bar"}
-  activity.End = time.Now().UTC()
-  activity.Start = activity.End.Add(-time.Hour)
-
   f := func (db *Database) {
+    activity := &Activity{Name: "foo", Project: "bar"}
+    activity.End = time.Now().UTC()
+    activity.Start = activity.End.Add(-time.Hour)
+
     saveErr := db.SaveActivity(activity)
     if saveErr != nil {
       t.Error(saveErr)
@@ -129,13 +129,12 @@ func TestDatabase_FindActivity_WithNonExistantId(t *testing.T) {
   DbTestRun(f, t)
 }
 
-
 func TestDatabase_FindAllActivities(t *testing.T) {
-  activity := &Activity{Name: "foo", Project: "bar"}
-  activity.End = time.Now().UTC()
-  activity.Start = activity.End.Add(-time.Hour)
-
   f := func (db *Database) {
+    activity := &Activity{Name: "foo", Project: "bar"}
+    activity.End = time.Now().UTC()
+    activity.Start = activity.End.Add(-time.Hour)
+
     saveErr := db.SaveActivity(activity)
     if saveErr != nil {
       t.Error(saveErr)
