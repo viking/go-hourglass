@@ -46,7 +46,7 @@ func DbTestRun(f func (db *Database), t *testing.T) {
   os.Remove(dbFile.Name())
 }
 
-func TestNewActivityRoundTrip(t *testing.T) {
+func TestDatabase_SaveActivity(t *testing.T) {
   activity := &Activity{Name: "foo", Project: "bar"}
   activity.End = time.Now().UTC()
   activity.Start = activity.End.Add(-time.Hour)
@@ -80,7 +80,7 @@ func TestNewActivityRoundTrip(t *testing.T) {
   DbTestRun(f, t)
 }
 
-func TestSaveExistingActivity(t *testing.T) {
+func TestDatabase_SaveActivity_WithExistingActivity(t *testing.T) {
   activity := &Activity{Name: "foo", Project: "bar"}
   activity.End = time.Now().UTC()
   activity.Start = activity.End.Add(-time.Hour)
@@ -117,7 +117,7 @@ func TestSaveExistingActivity(t *testing.T) {
   DbTestRun(f, t)
 }
 
-func TestFindAllActivities(t *testing.T) {
+func TestDatabase_FindAllActivities(t *testing.T) {
   activity := &Activity{Name: "foo", Project: "bar"}
   activity.End = time.Now().UTC()
   activity.Start = activity.End.Add(-time.Hour)
