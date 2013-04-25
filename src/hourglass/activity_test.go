@@ -62,3 +62,22 @@ func TestSetTagList(t *testing.T) {
     t.Error("expected", expected, "got", activity.Tags)
   }
 }
+
+func TestSetTagListWithEmptyString(t *testing.T) {
+  activity := Activity{}
+  activity.SetTagList("")
+
+  if len(activity.Tags) != 0 {
+    t.Error("expected tags array to be empty")
+  }
+}
+
+func TestEqual(t *testing.T) {
+  end := time.Now()
+  start := end.Add(-time.Duration(time.Hour))
+  activity_1 := &Activity{1, "foo", "bar", []string{"baz"}, start, end}
+  activity_2 := &Activity{1, "foo", "bar", []string{"baz"}, start, end}
+  if !activity_1.Equal(activity_2) {
+    t.Error("expected activities to be equal")
+  }
+}

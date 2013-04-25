@@ -3,14 +3,14 @@ package hourglass
 import (
   "testing"
   "io/ioutil"
-  /*"os"*/
+  "os"
   "time"
+  "strings"
   "database/sql"
   sqlite "github.com/mattn/go-sqlite3"
 )
 
 func dbRun(f func (db *Database), t *testing.T) {
-  sql.Register("sqlite", &sqlite.SQLiteDriver{})
   dbFile, err := ioutil.TempFile("", "hourglass")
   if err != nil {
     t.Error(err)
@@ -18,20 +18,28 @@ func dbRun(f func (db *Database), t *testing.T) {
   dbFile.Close()
 
   db := &Database{"sqlite", dbFile.Name()}
-  migrateErr := db.Migrate()
-  if migrateErr != nil {
-    t.Error(migrateErr)
+  if ok, dbErr := db.Valid(); !ok {
+    if strings.Contains(dbErr.Error(), "unknown driver") {
+      sql.Register("sqlite", &sqlite.SQLiteDriver{})
+    } else {
+      t.Error(dbErr)
+    }
   } else {
-    f(db)
+    migrateErr := db.Migrate()
+    if migrateErr != nil {
+      t.Error(migrateErr)
+    } else {
+      f(db)
+    }
   }
 
-  t.Log(dbFile.Name())
-  /*os.Remove(dbFile.Name())*/
+  /*t.Log(dbFile.Name())*/
+  os.Remove(dbFile.Name())
 }
 
 func TestNewActivityRoundTrip(t *testing.T) {
   activity := &Activity{Name: "foo", Project: "bar"}
-  activity.End = time.Now()
+  activity.End = time.Now().UTC()
   activity.Start = activity.End.Add(-time.Hour)
 
   f := func (db *Database) {
@@ -56,8 +64,45 @@ func TestNewActivityRoundTrip(t *testing.T) {
       return
     }
 
-    if activity.Name != gotActivity.Name {
-      t.Error(activity.Name, "!=", gotActivity.Name)
+    if !activity.Equal(gotActivity) {
+      t.Error("expected:\n", activity, "\ngot:\n", gotActivity)
+    }
+  }
+  dbRun(f, t)
+}
+
+func TestSaveExistingActivity(t *testing.T) {
+  activity := &Activity{Name: "foo", Project: "bar"}
+  activity.End = time.Now().UTC()
+  activity.Start = activity.End.Add(-time.Hour)
+
+  f := func (db *Database) {
+    saveErr := db.SaveActivity(activity)
+    if saveErr != nil {
+      t.Error(saveErr)
+      return
+    }
+
+    activity.Name = "baz"
+    saveErr = db.SaveActivity(activity)
+    if saveErr != nil {
+      t.Error(saveErr)
+      return
+    }
+
+    gotActivity, getErr := db.GetActivity(activity.Id)
+    if getErr != nil {
+      t.Error(getErr)
+      return
+    }
+
+    if gotActivity == nil {
+      t.Error("couldn't get activity")
+      return
+    }
+
+    if !activity.Equal(gotActivity) {
+      t.Error("expected:\n", activity, "\ngot:\n", gotActivity)
     }
   }
   dbRun(f, t)

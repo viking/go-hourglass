@@ -19,7 +19,11 @@ func (a *Activity) TagList() string {
 }
 
 func (a *Activity) SetTagList(tagList string) {
-  a.Tags = strings.Split(tagList, ", ")
+  if tagList == "" {
+    a.Tags = nil
+  } else {
+    a.Tags = strings.Split(tagList, ", ")
+  }
 }
 
 func (a *Activity) Duration() time.Duration {
@@ -31,4 +35,31 @@ func (a *Activity) Duration() time.Duration {
 
 func (a *Activity) IsRunning() bool {
   return a.End.IsZero()
+}
+
+func (a *Activity) Equal(b *Activity) bool {
+  if a.Id != b.Id {
+    return false
+  }
+  if a.Name != b.Name {
+    return false
+  }
+  if a.Project != b.Project {
+    return false
+  }
+  if len(a.Tags) != len(b.Tags) {
+    return false
+  }
+  for i, tag := range a.Tags {
+    if b.Tags[i] != tag {
+      return false
+    }
+  }
+  if !a.Start.Equal(b.Start) {
+    return false
+  }
+  if !a.End.Equal(b.End) {
+    return false
+  }
+  return true
 }

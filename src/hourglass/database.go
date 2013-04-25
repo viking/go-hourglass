@@ -29,6 +29,19 @@ func (e *DatabaseErrors) IsEmpty() bool {
   return len(e.Errors) == 0
 }
 
+func (db *Database) Valid() (bool, error) {
+  conn, openErr := sql.Open(db.DriverName, db.DataSourceName)
+  if openErr != nil {
+    return false, openErr
+  }
+
+  connErr := conn.Close()
+  if connErr != nil {
+    return false, connErr
+  }
+  return true, nil
+}
+
 func (db *Database) Migrate() error {
   err := &DatabaseErrors{}
 
@@ -144,7 +157,7 @@ func (db *Database) GetActivity(id int64) (*Activity, error) {
   scanErr := row.Scan(&name, &project, &tagList, &start, &end)
 
   if scanErr == nil {
-    activity = &Activity{Name: name, Project: project, Start: start, End: end}
+    activity = &Activity{Id: id, Name: name, Project: project, Start: start, End: end}
     activity.SetTagList(tagList)
   } else if scanErr != sql.ErrNoRows {
     err.Append(scanErr)
