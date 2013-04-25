@@ -5,7 +5,7 @@ import (
   "time"
 )
 
-func TestDuration(t *testing.T) {
+func TestActivity_Duration(t *testing.T) {
   activity := Activity{Name: "foo", Project: "bar"}
   activity.Start = time.Date(2013, time.April, 24, 13, 0, 0, 0, time.UTC)
 
@@ -17,7 +17,7 @@ func TestDuration(t *testing.T) {
   }
 }
 
-func TestDurationWithNoEnd(t *testing.T) {
+func TestActivity_Duration_WithNoEnd(t *testing.T) {
   activity := Activity{Name: "foo", Project: "bar"}
   activity.Start = time.Now().Add(time.Duration(-time.Hour))
 
@@ -28,14 +28,14 @@ func TestDurationWithNoEnd(t *testing.T) {
   }
 }
 
-func TestIsRunning(t *testing.T) {
+func TestActivity_IsRunning(t *testing.T) {
   activity := Activity{Name: "foo", Project: "bar", Start: time.Now()}
   if !activity.IsRunning() {
     t.Error("expected activity to be running")
   }
 }
 
-func TestTagList(t *testing.T) {
+func TestActivity_TagList(t *testing.T) {
   activity := Activity{Tags: []string{"foo", "bar", "baz"}}
   expected := "foo, bar, baz"
   actual := activity.TagList()
@@ -44,7 +44,7 @@ func TestTagList(t *testing.T) {
   }
 }
 
-func TestSetTagList(t *testing.T) {
+func TestActivity_SetTagList(t *testing.T) {
   activity := Activity{}
   activity.SetTagList("foo, bar, baz")
 
@@ -63,7 +63,7 @@ func TestSetTagList(t *testing.T) {
   }
 }
 
-func TestSetTagListWithEmptyString(t *testing.T) {
+func TestActivity_SetTagList_WithEmptyString(t *testing.T) {
   activity := Activity{}
   activity.SetTagList("")
 
@@ -72,7 +72,7 @@ func TestSetTagListWithEmptyString(t *testing.T) {
   }
 }
 
-func TestEqual(t *testing.T) {
+func TestActivity_Equal(t *testing.T) {
   end := time.Now()
   start := end.Add(-time.Duration(time.Hour))
   activity_1 := &Activity{1, "foo", "bar", []string{"baz"}, start, end}
