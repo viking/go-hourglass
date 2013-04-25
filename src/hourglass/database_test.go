@@ -117,6 +117,19 @@ func TestDatabase_SaveActivity_WithExistingActivity(t *testing.T) {
   DbTestRun(f, t)
 }
 
+
+func TestDatabase_FindActivity_WithNonExistantId(t *testing.T) {
+  f := func(db *Database) {
+    _, findErr := db.FindActivity(1234)
+    if findErr == nil {
+      t.Error("expected error, but there wasn't one")
+      return
+    }
+  }
+  DbTestRun(f, t)
+}
+
+
 func TestDatabase_FindAllActivities(t *testing.T) {
   activity := &Activity{Name: "foo", Project: "bar"}
   activity.End = time.Now().UTC()

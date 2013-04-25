@@ -4,6 +4,7 @@ import (
   "database/sql"
   "strings"
   "time"
+  "errors"
 )
 
 const DatabaseVersion = 2
@@ -16,6 +17,8 @@ type Database struct {
 type DatabaseErrors struct {
   Errors []string
 }
+
+var ErrNotFound = errors.New("record not found")
 
 func (e *DatabaseErrors) Error() string {
   return strings.Join(e.Errors, "; ")
@@ -159,7 +162,9 @@ func (db *Database) FindActivity(id int64) (*Activity, error) {
   if scanErr == nil {
     activity = &Activity{Id: id, Name: name, Project: project, Start: start, End: end}
     activity.SetTagList(tagList)
-  } else if scanErr != sql.ErrNoRows {
+  } else if scanErr == sql.ErrNoRows {
+    err.Append(ErrNotFound)
+  } else {
     err.Append(scanErr)
   }
 
