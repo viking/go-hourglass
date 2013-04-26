@@ -152,3 +152,68 @@ func TestStartCommand_NeedsDatabase(t *testing.T) {
     t.Error("expected true, got false")
   }
 }
+
+func TestStopCommand_Run_WithNoArgs(t *testing.T) {
+  f := func (db *Database) {
+    start := time.Now().Add(-time.Hour)
+    activity_1 := &Activity{Name: "foo", Start: start}
+    activity_2 := &Activity{Name: "bar", Start: start}
+
+    var saveErr error
+    saveErr = db.SaveActivity(activity_1)
+    if saveErr != nil {
+      t.Error(saveErr)
+    }
+    saveErr = db.SaveActivity(activity_2)
+    if saveErr != nil {
+      t.Error(saveErr)
+    }
+
+    c := StopCommand{}
+    cmdErr := c.Run(db)
+    if cmdErr != nil {
+      t.Error(cmdErr)
+    }
+
+    expected := time.Now()
+
+    var foundActivity_1, foundActivity_2 *Activity
+    var findErr error
+    foundActivity_1, findErr = db.FindActivity(activity_1.Id)
+    if findErr != nil {
+      t.Error(findErr)
+    } else {
+      duration := expected.Sub(foundActivity_1.End)
+      if duration > time.Second {
+        t.Error("expected activity 1's end time to be", expected, "but was",
+          foundActivity_1.End)
+      }
+    }
+
+    foundActivity_2, findErr = db.FindActivity(activity_2.Id)
+    if findErr != nil {
+      t.Error(findErr)
+    } else {
+      duration := expected.Sub(foundActivity_2.End)
+      if duration > time.Second {
+        t.Error("expected activity 2's end time to be", expected, "but was",
+          foundActivity_2.End)
+      }
+    }
+  }
+  DbTestRun(f, t)
+}
+
+func TestStopCommand_Help(t *testing.T) {
+  c := StopCommand{}
+  if c.Help() == "" {
+    t.Error("no help available")
+  }
+}
+
+func TestStopCommand_NeedsDatabase(t *testing.T) {
+  c := StopCommand{}
+  if !c.NeedsDatabase() {
+    t.Error("expected true, got false")
+  }
+}

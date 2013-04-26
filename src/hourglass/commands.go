@@ -8,6 +8,7 @@ import (
 const (
   StartHelp = "Usage: %s start <name> [project] [ [tag1, tag2, ...] ]\n\n" +
     "Start a new activity"
+  StopHelp = "Usage: %s stop\n\nStop all activities"
 )
 
 type Command interface {
@@ -56,4 +57,36 @@ func (StartCommand) Run(db *Database, args ...string) error {
     return saveErr
   }
   return nil
+}
+
+/* stop */
+type StopCommand struct{}
+
+func (StopCommand) Run(db *Database, args ...string) (err error) {
+  var activities []*Activity
+
+  end := time.Now().UTC()
+  if len(args) == 0 {
+    activities, err = db.FindRunningActivities()
+    if err != nil {
+      return
+    }
+    for _, activity := range activities {
+      activity.End = end
+      err = db.SaveActivity(activity)
+      if err != nil {
+        return
+      }
+    }
+  }
+
+  return nil
+}
+
+func (StopCommand) Help() string {
+  return StopHelp
+}
+
+func (StopCommand) NeedsDatabase() bool {
+  return true
 }
