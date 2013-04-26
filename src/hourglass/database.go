@@ -203,7 +203,7 @@ func (db *Database) FindAllActivities() (activities []*Activity, err error) {
 }
 
 func (db *Database) FindRunningActivities() (activities []*Activity, err error) {
-  activities, err = db.FindActivities("WHERE end IS NULL")
+  activities, err = db.FindActivities("WHERE end IS ?", &time.Time{})
   return
 }
 
