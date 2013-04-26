@@ -163,13 +163,6 @@ func TestStartCommand_Help(t *testing.T) {
   }
 }
 
-func TestStartCommand_NeedsDatabase(t *testing.T) {
-  c := StartCommand{}
-  if !c.NeedsDatabase() {
-    t.Error("expected true, got false")
-  }
-}
-
 func TestStopCommand_Run_WithNoArgs(t *testing.T) {
   f := func (db *Database) {
     start := time.Now().Add(-time.Hour)
@@ -234,13 +227,6 @@ func TestStopCommand_Help(t *testing.T) {
   }
 }
 
-func TestStopCommand_NeedsDatabase(t *testing.T) {
-  c := StopCommand{}
-  if !c.NeedsDatabase() {
-    t.Error("expected true, got false")
-  }
-}
-
 func TestStatusCommand_Run_WithNoArgs(t *testing.T) {
   f := func (db *Database) {
     now := time.Now().UTC()
@@ -289,12 +275,5 @@ func TestStatusCommand_Help(t *testing.T) {
   c := StatusCommand{}
   if c.Help() == "" {
     t.Error("no help available")
-  }
-}
-
-func TestStatusCommand_NeedsDatabase(t *testing.T) {
-  c := StatusCommand{}
-  if !c.NeedsDatabase() {
-    t.Error("expected true, got false")
   }
 }

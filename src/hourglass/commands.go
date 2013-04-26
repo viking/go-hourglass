@@ -15,7 +15,6 @@ const (
 type Command interface {
   Run(db *Database, args ...string) (string, error)
   Help() string
-  NeedsDatabase() bool
 }
 
 /* start */
@@ -57,10 +56,6 @@ func (StartCommand) Help() string {
   return StartHelp
 }
 
-func (StartCommand) NeedsDatabase() bool {
-  return true
-}
-
 /* stop */
 type StopCommand struct{}
 
@@ -88,10 +83,6 @@ func (StopCommand) Run(db *Database, args ...string) (output string, err error) 
 
 func (StopCommand) Help() string {
   return StopHelp
-}
-
-func (StopCommand) NeedsDatabase() bool {
-  return true
 }
 
 /* status */
@@ -126,8 +117,4 @@ func (StatusCommand) Run(db *Database, args ...string) (output string, err error
 
 func (StatusCommand) Help() string {
   return StatusHelp
-}
-
-func (StatusCommand) NeedsDatabase() bool {
-  return true
 }
