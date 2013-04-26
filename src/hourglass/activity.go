@@ -63,3 +63,10 @@ func (a *Activity) Equal(b *Activity) bool {
   }
   return true
 }
+
+func (a *Activity) Status() string {
+  if a.IsRunning() {
+    return "running"
+  }
+  return "stopped"
+}

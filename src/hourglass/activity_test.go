@@ -81,3 +81,15 @@ func TestActivity_Equal(t *testing.T) {
     t.Error("expected activities to be equal")
   }
 }
+
+func TestActivity_Status(t *testing.T) {
+  activity := &Activity{1, "foo", "bar", []string{}, time.Now(), time.Time{}}
+  if activity.Status() != "running" {
+    t.Errorf("expected 'running', got '%s'", activity.Status())
+  }
+
+  activity.End = time.Now()
+  if activity.Status() != "stopped" {
+    t.Errorf("expected 'stopped', got '%s'", activity.Status())
+  }
+}
