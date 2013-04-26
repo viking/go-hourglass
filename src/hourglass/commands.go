@@ -20,14 +20,6 @@ type Command interface {
 /* start */
 type StartCommand struct{}
 
-func (StartCommand) Help() string {
-  return StartHelp
-}
-
-func (StartCommand) NeedsDatabase() bool {
-  return true
-}
-
 func (StartCommand) Run(db *Database, args ...string) (string, error) {
   var name, project string
   var tags []string
@@ -57,6 +49,14 @@ func (StartCommand) Run(db *Database, args ...string) (string, error) {
     return "", saveErr
   }
   return "", nil
+}
+
+func (StartCommand) Help() string {
+  return StartHelp
+}
+
+func (StartCommand) NeedsDatabase() bool {
+  return true
 }
 
 /* stop */
