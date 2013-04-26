@@ -1,0 +1,154 @@
+package hourglass
+
+import (
+  "testing"
+  "time"
+)
+
+func TestStartCommand_Run_WithMissingName(t *testing.T) {
+  f := func (db *Database) {
+    c := StartCommand{}
+    cmdErr := c.Run(db)
+    if cmdErr == nil {
+      t.Error("expected command error, but there wasn't one")
+    }
+  }
+  DbTestRun(f, t)
+}
+
+func TestStartCommand_Run_WithName(t *testing.T) {
+  f := func (db *Database) {
+    c := StartCommand{}
+    cmdErr := c.Run(db, "foo")
+    if cmdErr != nil {
+      t.Error(cmdErr)
+      return
+    }
+
+    activities, findErr := db.FindAllActivities()
+    if findErr != nil {
+      t.Error(findErr)
+      return
+    }
+
+    if len(activities) != 1 {
+      t.Error("expected 1 activity, got", len(activities))
+    }
+    if activities[0].Name != "foo" {
+      t.Error("expected name to be foo, but was", activities[0].Name)
+    }
+    if activities[0].Project != "" {
+      t.Error("expected project to be empty, but was", activities[0].Project)
+    }
+    if len(activities[0].Tags) != 0 {
+      t.Error("expected tags to be empty, but was", activities[0].Tags)
+    }
+
+    duration := time.Since(activities[0].Start)
+    if duration > time.Second {
+      t.Error("expected start time to be", time.Now(), "but was",
+        activities[0].Start.Local())
+    }
+
+    if !activities[0].End.IsZero() {
+      t.Error("expected end time to be zero, but was", activities[0].End)
+    }
+  }
+  DbTestRun(f, t)
+}
+
+func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
+  f := func (db *Database) {
+    c := StartCommand{}
+    cmdErr := c.Run(db, "foo", "bar")
+    if cmdErr != nil {
+      t.Error(cmdErr)
+      return
+    }
+
+    activities, findErr := db.FindAllActivities()
+    if findErr != nil {
+      t.Error(findErr)
+      return
+    }
+
+    if len(activities) != 1 {
+      t.Error("expected 1 activity, got", len(activities))
+    }
+    if activities[0].Name != "foo" {
+      t.Error("expected name to be foo, but was", activities[0].Name)
+    }
+    if activities[0].Project != "bar" {
+      t.Error("expected project to be bar, but was", activities[0].Project)
+    }
+    if len(activities[0].Tags) != 0 {
+      t.Error("expected tags to be empty, but was", activities[0].Tags)
+    }
+
+    duration := time.Since(activities[0].Start)
+    if duration > time.Second {
+      t.Error("expected start time to be", time.Now(), "but was",
+        activities[0].Start.Local())
+    }
+
+    if !activities[0].End.IsZero() {
+      t.Error("expected end time to be zero, but was", activities[0].End)
+    }
+  }
+  DbTestRun(f, t)
+}
+
+func TestStartCommand_Run_WithAllAttribs(t *testing.T) {
+  f := func (db *Database) {
+    c := StartCommand{}
+    cmdErr := c.Run(db, "foo", "bar", "baz", "qux")
+    if cmdErr != nil {
+      t.Error(cmdErr)
+      return
+    }
+
+    activities, findErr := db.FindAllActivities()
+    if findErr != nil {
+      t.Error(findErr)
+      return
+    }
+
+    if len(activities) != 1 {
+      t.Error("expected 1 activity, got", len(activities))
+    }
+    if activities[0].Name != "foo" {
+      t.Error("expected name to be foo, but was", activities[0].Name)
+    }
+    if activities[0].Project != "bar" {
+      t.Error("expected project to be bar, but was", activities[0].Project)
+    }
+    if len(activities[0].Tags) != 2 || activities[0].Tags[0] != "baz" || activities[0].Tags[1] != "qux" {
+      t.Error("expected tags to be baz, but was", activities[0].Tags)
+    }
+
+    duration := time.Since(activities[0].Start)
+    if duration > time.Second {
+      t.Error("expected start time to be", time.Now(), "but was",
+        activities[0].Start.Local())
+    }
+
+    if !activities[0].End.IsZero() {
+      t.Error("expected end time to be zero, but was", activities[0].End)
+    }
+  }
+  DbTestRun(f, t)
+}
+
+func TestStartCommand_Help(t *testing.T) {
+  c := StartCommand{}
+  if c.Help() == "" {
+    t.Error("no help available")
+  }
+}
+
+func TestStartCommand_NeedsDatabase(t *testing.T) {
+  c := StartCommand{}
+  if !c.NeedsDatabase() {
+    t.Error("expected true, got false")
+  }
+}
