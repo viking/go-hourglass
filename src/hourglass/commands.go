@@ -12,7 +12,7 @@ const (
 )
 
 type Command interface {
-  Run(db *Database, args ...string) error
+  Run(db *Database, args ...string) (string, error)
   Help() string
   NeedsDatabase() bool
 }
@@ -28,12 +28,12 @@ func (StartCommand) NeedsDatabase() bool {
   return true
 }
 
-func (StartCommand) Run(db *Database, args ...string) error {
+func (StartCommand) Run(db *Database, args ...string) (string, error) {
   var name, project string
   var tags []string
 
   if len(args) == 0 {
-    return errors.New("missing name argument")
+    return "", errors.New("missing name argument")
   }
 
   for i, val := range args {
@@ -54,15 +54,15 @@ func (StartCommand) Run(db *Database, args ...string) error {
   }
   saveErr := db.SaveActivity(activity)
   if saveErr != nil {
-    return saveErr
+    return "", saveErr
   }
-  return nil
+  return "", nil
 }
 
 /* stop */
 type StopCommand struct{}
 
-func (StopCommand) Run(db *Database, args ...string) (err error) {
+func (StopCommand) Run(db *Database, args ...string) (output string, err error) {
   var activities []*Activity
 
   end := time.Now().UTC()
@@ -80,7 +80,7 @@ func (StopCommand) Run(db *Database, args ...string) (err error) {
     }
   }
 
-  return nil
+  return
 }
 
 func (StopCommand) Help() string {

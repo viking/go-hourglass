@@ -8,7 +8,7 @@ import (
 func TestStartCommand_Run_WithMissingName(t *testing.T) {
   f := func (db *Database) {
     c := StartCommand{}
-    cmdErr := c.Run(db)
+    _, cmdErr := c.Run(db)
     if cmdErr == nil {
       t.Error("expected command error, but there wasn't one")
     }
@@ -19,7 +19,7 @@ func TestStartCommand_Run_WithMissingName(t *testing.T) {
 func TestStartCommand_Run_WithName(t *testing.T) {
   f := func (db *Database) {
     c := StartCommand{}
-    cmdErr := c.Run(db, "foo")
+    _, cmdErr := c.Run(db, "foo")
     if cmdErr != nil {
       t.Error(cmdErr)
       return
@@ -60,7 +60,7 @@ func TestStartCommand_Run_WithName(t *testing.T) {
 func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
   f := func (db *Database) {
     c := StartCommand{}
-    cmdErr := c.Run(db, "foo", "bar")
+    _, cmdErr := c.Run(db, "foo", "bar")
     if cmdErr != nil {
       t.Error(cmdErr)
       return
@@ -101,7 +101,7 @@ func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
 func TestStartCommand_Run_WithAllAttribs(t *testing.T) {
   f := func (db *Database) {
     c := StartCommand{}
-    cmdErr := c.Run(db, "foo", "bar", "baz", "qux")
+    _, cmdErr := c.Run(db, "foo", "bar", "baz", "qux")
     if cmdErr != nil {
       t.Error(cmdErr)
       return
@@ -170,7 +170,7 @@ func TestStopCommand_Run_WithNoArgs(t *testing.T) {
     }
 
     c := StopCommand{}
-    cmdErr := c.Run(db)
+    _, cmdErr := c.Run(db)
     if cmdErr != nil {
       t.Error(cmdErr)
     }
