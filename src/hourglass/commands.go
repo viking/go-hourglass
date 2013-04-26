@@ -3,6 +3,7 @@ package hourglass
 import (
   "time"
   "errors"
+  "fmt"
 )
 
 const (
@@ -20,12 +21,13 @@ type Command interface {
 /* start */
 type StartCommand struct{}
 
-func (StartCommand) Run(db *Database, args ...string) (string, error) {
+func (StartCommand) Run(db *Database, args ...string) (output string, err error) {
   var name, project string
   var tags []string
 
   if len(args) == 0 {
-    return "", errors.New("missing name argument")
+    err = errors.New("missing name argument")
+    return
   }
 
   for i, val := range args {
@@ -44,11 +46,11 @@ func (StartCommand) Run(db *Database, args ...string) (string, error) {
     Name: name, Project: project, Tags: tags,
     Start: time.Now().UTC(),
   }
-  saveErr := db.SaveActivity(activity)
-  if saveErr != nil {
-    return "", saveErr
+  err = db.SaveActivity(activity)
+  if err == nil {
+    output = fmt.Sprint("started activity ", activity.Id)
   }
-  return "", nil
+  return
 }
 
 func (StartCommand) Help() string {

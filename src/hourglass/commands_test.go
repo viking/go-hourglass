@@ -3,6 +3,7 @@ package hourglass
 import (
   "testing"
   "time"
+  "fmt"
 )
 
 func TestStartCommand_Run_WithMissingName(t *testing.T) {
@@ -19,7 +20,7 @@ func TestStartCommand_Run_WithMissingName(t *testing.T) {
 func TestStartCommand_Run_WithName(t *testing.T) {
   f := func (db *Database) {
     c := StartCommand{}
-    _, cmdErr := c.Run(db, "foo")
+    cmdOutput, cmdErr := c.Run(db, "foo")
     if cmdErr != nil {
       t.Error(cmdErr)
       return
@@ -53,6 +54,11 @@ func TestStartCommand_Run_WithName(t *testing.T) {
     if !activities[0].End.IsZero() {
       t.Error("expected end time to be zero, but was", activities[0].End)
     }
+
+    expOutput := fmt.Sprint("started activity ", activities[0].Id)
+    if cmdOutput != expOutput {
+      t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
+    }
   }
   DbTestRun(f, t)
 }
@@ -60,7 +66,7 @@ func TestStartCommand_Run_WithName(t *testing.T) {
 func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
   f := func (db *Database) {
     c := StartCommand{}
-    _, cmdErr := c.Run(db, "foo", "bar")
+    cmdOutput, cmdErr := c.Run(db, "foo", "bar")
     if cmdErr != nil {
       t.Error(cmdErr)
       return
@@ -94,6 +100,11 @@ func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
     if !activities[0].End.IsZero() {
       t.Error("expected end time to be zero, but was", activities[0].End)
     }
+
+    expOutput := fmt.Sprint("started activity ", activities[0].Id)
+    if cmdOutput != expOutput {
+      t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
+    }
   }
   DbTestRun(f, t)
 }
@@ -101,7 +112,7 @@ func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
 func TestStartCommand_Run_WithAllAttribs(t *testing.T) {
   f := func (db *Database) {
     c := StartCommand{}
-    _, cmdErr := c.Run(db, "foo", "bar", "baz", "qux")
+    cmdOutput, cmdErr := c.Run(db, "foo", "bar", "baz", "qux")
     if cmdErr != nil {
       t.Error(cmdErr)
       return
@@ -134,6 +145,11 @@ func TestStartCommand_Run_WithAllAttribs(t *testing.T) {
 
     if !activities[0].End.IsZero() {
       t.Error("expected end time to be zero, but was", activities[0].End)
+    }
+
+    expOutput := fmt.Sprint("started activity ", activities[0].Id)
+    if cmdOutput != expOutput {
+      t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
     }
   }
   DbTestRun(f, t)
