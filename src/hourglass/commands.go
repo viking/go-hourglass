@@ -48,7 +48,7 @@ func (StartCommand) Run(db *Database, args ...string) (output string, err error)
   }
   err = db.SaveActivity(activity)
   if err == nil {
-    output = fmt.Sprint("started activity ", activity.Id)
+    output = fmt.Sprintf("started activity %d\n", activity.Id)
   }
   return
 }

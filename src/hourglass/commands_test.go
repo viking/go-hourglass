@@ -55,7 +55,7 @@ func TestStartCommand_Run_WithName(t *testing.T) {
       t.Error("expected end time to be zero, but was", activities[0].End)
     }
 
-    expOutput := fmt.Sprint("started activity ", activities[0].Id)
+    expOutput := fmt.Sprintf("started activity %d\n", activities[0].Id)
     if cmdOutput != expOutput {
       t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
     }
@@ -101,7 +101,7 @@ func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
       t.Error("expected end time to be zero, but was", activities[0].End)
     }
 
-    expOutput := fmt.Sprint("started activity ", activities[0].Id)
+    expOutput := fmt.Sprintf("started activity %d\n", activities[0].Id)
     if cmdOutput != expOutput {
       t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
     }
@@ -147,7 +147,7 @@ func TestStartCommand_Run_WithAllAttribs(t *testing.T) {
       t.Error("expected end time to be zero, but was", activities[0].End)
     }
 
-    expOutput := fmt.Sprint("started activity ", activities[0].Id)
+    expOutput := fmt.Sprintf("started activity %d\n", activities[0].Id)
     if cmdOutput != expOutput {
       t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
     }
