@@ -93,3 +93,19 @@ func TestActivity_Status(t *testing.T) {
     t.Errorf("expected 'stopped', got '%s'", activity.Status())
   }
 }
+
+func TestActivity_Clone(t *testing.T) {
+  end := time.Now()
+  start := end.Add(-time.Duration(time.Hour))
+  activity_1 := &Activity{1, "foo", "bar", []string{"baz"}, start, end}
+  activity_2 := activity_1.Clone()
+
+  activity_2.Name = "qux"
+  if activity_1.Name == activity_2.Name {
+    t.Error("activity wasn't cloned")
+  }
+  activity_2.Tags[0] = "junk"
+  if activity_1.Tags[0] == activity_2.Tags[0] {
+    t.Error("activity tags weren't cloned")
+  }
+}

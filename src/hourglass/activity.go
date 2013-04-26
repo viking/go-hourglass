@@ -70,3 +70,10 @@ func (a *Activity) Status() string {
   }
   return "stopped"
 }
+
+func (a *Activity) Clone() *Activity {
+  b := &Activity{a.Id, a.Name, a.Project, nil, a.Start, a.End}
+  b.Tags = make([]string, len(a.Tags))
+  copy(b.Tags, a.Tags)
+  return b
+}
