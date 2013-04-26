@@ -186,7 +186,7 @@ func TestStopCommand_Run_WithNoArgs(t *testing.T) {
     }
 
     c := StopCommand{}
-    _, cmdErr := c.Run(db)
+    cmdOutput, cmdErr := c.Run(db)
     if cmdErr != nil {
       t.Error(cmdErr)
     }
@@ -215,6 +215,12 @@ func TestStopCommand_Run_WithNoArgs(t *testing.T) {
         t.Error("expected activity 2's end time to be", expected, "but was",
           foundActivity_2.End)
       }
+    }
+
+    expOutput := fmt.Sprintf("stopped activity %d\nstopped activity %d\n",
+      foundActivity_1.Id, foundActivity_2.Id)
+    if cmdOutput != expOutput {
+      t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
     }
   }
   DbTestRun(f, t)

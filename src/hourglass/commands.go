@@ -79,6 +79,7 @@ func (StopCommand) Run(db *Database, args ...string) (output string, err error) 
       if err != nil {
         return
       }
+      output += fmt.Sprintf("stopped activity %d\n", activity.Id)
     }
   }
 
