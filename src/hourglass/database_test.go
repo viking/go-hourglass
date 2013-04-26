@@ -194,3 +194,42 @@ func TestDatabase_FindRunningActivities(t *testing.T) {
   }
   DbTestRun(f, t)
 }
+
+func TestDatabase_FindActivitiesBetween(t *testing.T) {
+  f := func (db *Database) {
+    now := time.Now()
+
+    activity_1 := &Activity{Name: "foo", Project: "bar"}
+    activity_1.End = now.Add(-(time.Hour * 24))
+    activity_1.Start = activity_1.End.Add(-time.Hour)
+
+    activity_2 := &Activity{Name: "baz", Start: now}
+
+    var saveErr error
+    saveErr = db.SaveActivity(activity_1)
+    if saveErr != nil {
+      t.Error(saveErr)
+    }
+    saveErr = db.SaveActivity(activity_2)
+    if saveErr != nil {
+      t.Error(saveErr)
+    }
+
+    activities, findErr := db.FindActivitiesBetween(activity_1.Start,
+      activity_1.Start.Add(time.Hour))
+    if findErr != nil {
+      t.Error(findErr)
+      return
+    }
+
+    if len(activities) != 1 {
+      t.Error("expected to find 1 activity, but found", len(activities))
+      return
+    }
+
+    if !activity_1.Equal(activities[0]) {
+      t.Error("expected:\n", activity_1, "\ngot:\n", activities[0])
+    }
+  }
+  DbTestRun(f, t)
+}

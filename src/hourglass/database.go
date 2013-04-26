@@ -207,3 +207,8 @@ func (db *Database) FindRunningActivities() (activities []*Activity, err error) 
   return
 }
 
+func (db *Database) FindActivitiesBetween(lower time.Time, upper time.Time) (activities []*Activity, err error) {
+  activities, err = db.FindActivities("WHERE start >= ? AND start < ?", lower, upper)
+  return
+}
+
