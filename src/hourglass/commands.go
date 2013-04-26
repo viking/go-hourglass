@@ -7,9 +7,9 @@ import (
 )
 
 const (
-  StartHelp = "Usage: %s start <name> [project] [ [tag1, tag2, ...] ]\n\n" +
-    "Start a new activity"
+  StartHelp = "Usage: %s start <name> [project] [ [tag1, tag2, ...] ]\n\nStart a new activity"
   StopHelp = "Usage: %s stop\n\nStop all activities"
+  StatusHelp = "Usage: %s status\n\nShow activity status"
 )
 
 type Command interface {
@@ -91,5 +91,43 @@ func (StopCommand) Help() string {
 }
 
 func (StopCommand) NeedsDatabase() bool {
+  return true
+}
+
+/* status */
+type StatusCommand struct{}
+
+func (StatusCommand) Run(db *Database, args ...string) (output string, err error) {
+  now := time.Now()
+
+  /* midnight today */
+  lower := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UTC()
+  /* midnight tomorrow */
+  upper := lower.Add(time.Hour * 24)
+
+  var activities []*Activity
+  activities, err = db.FindActivitiesBetween(lower, upper)
+  if err != nil {
+    return
+  }
+
+  if len(activities) == 0 {
+    output = "there have been no activities today\n"
+  } else {
+    output = fmt.Sprint("id\tname\tproject\tstate\tduration\n")
+    for _, activity := range(activities) {
+      output += fmt.Sprintf("%d\t%s\t%s\t%s\t%s\n", activity.Id, activity.Name,
+          activity.Project, activity.Status(), activity.Duration().String())
+    }
+  }
+
+  return
+}
+
+func (StatusCommand) Help() string {
+  return StatusHelp
+}
+
+func (StatusCommand) NeedsDatabase() bool {
   return true
 }

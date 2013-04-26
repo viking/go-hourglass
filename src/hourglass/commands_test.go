@@ -4,6 +4,7 @@ import (
   "testing"
   "time"
   "fmt"
+  "strings"
 )
 
 func TestStartCommand_Run_WithMissingName(t *testing.T) {
@@ -235,6 +236,64 @@ func TestStopCommand_Help(t *testing.T) {
 
 func TestStopCommand_NeedsDatabase(t *testing.T) {
   c := StopCommand{}
+  if !c.NeedsDatabase() {
+    t.Error("expected true, got false")
+  }
+}
+
+func TestStatusCommand_Run_WithNoArgs(t *testing.T) {
+  f := func (db *Database) {
+    now := time.Now().UTC()
+    start := now.Add(-time.Hour)
+    activity_1 := &Activity{Name: "foo", Start: start, End: now}
+    activity_2 := &Activity{Name: "bar", Project: "baz", Start: start}
+
+    var saveErr error
+    saveErr = db.SaveActivity(activity_1)
+    if saveErr != nil {
+      t.Error(saveErr)
+    }
+    saveErr = db.SaveActivity(activity_2)
+    if saveErr != nil {
+      t.Error(saveErr)
+    }
+
+    c := StatusCommand{}
+    cmdOutput, cmdErr := c.Run(db)
+    if cmdErr != nil {
+      t.Error(cmdErr)
+    }
+
+    expLine1 := fmt.Sprint("id\tname\tproject\tstate\tduration\n")
+    if !strings.Contains(cmdOutput, expLine1) {
+      t.Errorf("expected output to contain '%s'", expLine1)
+    }
+
+    expLine2 := fmt.Sprintf("%d\t%s\t%s\t%s\t%s\n", activity_1.Id,
+      activity_1.Name, activity_1.Project, activity_1.Status(),
+      activity_1.Duration().String())
+    if !strings.Contains(cmdOutput, expLine2) {
+      t.Errorf("expected output to contain '%s'", expLine2)
+    }
+
+    expLine3 := fmt.Sprintf("%d\t%s\t%s\t%s\t", activity_2.Id, activity_2.Name,
+      activity_2.Project, activity_2.Status())
+    if !strings.Contains(cmdOutput, expLine3) {
+      t.Errorf("expected output to contain '%s'", expLine3)
+    }
+  }
+  DbTestRun(f, t)
+}
+
+func TestStatusCommand_Help(t *testing.T) {
+  c := StatusCommand{}
+  if c.Help() == "" {
+    t.Error("no help available")
+  }
+}
+
+func TestStatusCommand_NeedsDatabase(t *testing.T) {
+  c := StatusCommand{}
   if !c.NeedsDatabase() {
     t.Error("expected true, got false")
   }
