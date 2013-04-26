@@ -93,6 +93,9 @@ func (db *Database) Migrate() error {
     switch version {
     case 0:
       _, execErr = db.exec(conn, `CREATE TABLE schema_info (version INT)`)
+      if execErr == nil {
+        _, execErr = db.exec(conn, "INSERT INTO schema_info VALUES (?)", 0)
+      }
     case 1:
       _, execErr = db.exec(conn, `CREATE TABLE activities (id INTEGER PRIMARY KEY,
         name TEXT, project TEXT, tags TEXT, start TIMESTAMP, end TIMESTAMP)`)
@@ -102,7 +105,7 @@ func (db *Database) Migrate() error {
       err.Append(execErr)
       break
     } else {
-      _, execErr = db.exec(conn, "INSERT INTO schema_info VALUES(?)", version + 1)
+      _, execErr = db.exec(conn, "UPDATE schema_info SET version = ?", version + 1)
       if execErr != nil {
         err.Append(execErr)
         break
