@@ -20,7 +20,7 @@ func DbTestRun(f func (db *Database), t *testing.T) {
     t.Error(closeErr)
   }
 
-  db := &Database{"sqlite", dbFile.Name()}
+  db := &Database{"sqlite", dbFile.Name(), nil}
 
   var ok bool
   var dbErr error

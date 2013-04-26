@@ -5,6 +5,8 @@ import (
   "strings"
   "time"
   "errors"
+  "io"
+  "fmt"
 )
 
 const DatabaseVersion = 2
@@ -12,6 +14,7 @@ const DatabaseVersion = 2
 type Database struct {
   DriverName string
   DataSourceName string
+  Log io.Writer
 }
 
 type DatabaseErrors struct {
@@ -30,6 +33,33 @@ func (e *DatabaseErrors) Append(err error) {
 
 func (e *DatabaseErrors) IsEmpty() bool {
   return len(e.Errors) == 0
+}
+
+func (db *Database) exec(conn *sql.DB, query string, args ...interface{}) (res sql.Result, err error) {
+  if db.Log != nil {
+    message := fmt.Sprintf("exec: \"%s\" with args: %v\n", query, args)
+    db.Log.Write([]byte(message))
+  }
+  res, err = conn.Exec(query, args...)
+  return
+}
+
+func (db *Database) query(conn *sql.DB, query string, args ...interface{}) (rows *sql.Rows, err error) {
+  if db.Log != nil {
+    message := fmt.Sprintf("query: \"%s\" with args: %v\n", query, args)
+    db.Log.Write([]byte(message))
+  }
+  rows, err = conn.Query(query, args...)
+  return
+}
+
+func (db *Database) queryRow(conn *sql.DB, query string, args ...interface{}) (row *sql.Row) {
+  if db.Log != nil {
+    message := fmt.Sprintf("queryRow: \"%s\" with args: %v\n", query, args)
+    db.Log.Write([]byte(message))
+  }
+  row = conn.QueryRow(query, args...)
+  return
 }
 
 func (db *Database) Valid() (bool, error) {
@@ -54,7 +84,7 @@ func (db *Database) Migrate() error {
     return err
   }
 
-  versionRow := conn.QueryRow("SELECT version FROM schema_info")
+  versionRow := db.queryRow(conn, "SELECT version FROM schema_info")
   version := 0
   versionRow.Scan(&version)
 
@@ -62,9 +92,9 @@ func (db *Database) Migrate() error {
   for ; version < DatabaseVersion; version++ {
     switch version {
     case 0:
-      _, execErr = conn.Exec(`CREATE TABLE schema_info (version INT)`)
+      _, execErr = db.exec(conn, `CREATE TABLE schema_info (version INT)`)
     case 1:
-      _, execErr = conn.Exec(`CREATE TABLE activities (id INTEGER PRIMARY KEY,
+      _, execErr = db.exec(conn, `CREATE TABLE activities (id INTEGER PRIMARY KEY,
         name TEXT, project TEXT, tags TEXT, start TIMESTAMP, end TIMESTAMP)`)
     }
 
@@ -72,7 +102,7 @@ func (db *Database) Migrate() error {
       err.Append(execErr)
       break
     } else {
-      _, execErr = conn.Exec("INSERT INTO schema_info VALUES(?)", version + 1)
+      _, execErr = db.exec(conn, "INSERT INTO schema_info VALUES(?)", version + 1)
       if execErr != nil {
         err.Append(execErr)
         break
@@ -117,7 +147,7 @@ func (db *Database) SaveActivity(a *Activity) error {
   }
 
   /* Execute the query */
-  res, execErr := conn.Exec(query, args...)
+  res, execErr := db.exec(conn, query, args...)
   if execErr == nil {
     if a.Id == 0 {
       id, idErr := res.LastInsertId()
@@ -154,7 +184,7 @@ func (db *Database) FindActivities(predicate string, args ...interface{}) ([]*Ac
 
   query := `SELECT id, name, project, tags, start, end
     FROM activities ` + predicate
-  rows, queryErr := conn.Query(query, args...)
+  rows, queryErr := db.query(conn, query, args...)
 
   if queryErr != nil {
     err.Append(queryErr)
@@ -211,4 +241,3 @@ func (db *Database) FindActivitiesBetween(lower time.Time, upper time.Time) (act
   activities, err = db.FindActivities("WHERE start >= ? AND start < ?", lower, upper)
   return
 }
-
