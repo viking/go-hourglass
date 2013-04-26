@@ -56,7 +56,7 @@ func TestStartCommand_Run_WithName(t *testing.T) {
       t.Error("expected end time to be zero, but was", activities[0].End)
     }
 
-    expOutput := fmt.Sprintf("started activity %d\n", activities[0].Id)
+    expOutput := fmt.Sprintf("started activity %d", activities[0].Id)
     if cmdOutput != expOutput {
       t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
     }
@@ -102,7 +102,7 @@ func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
       t.Error("expected end time to be zero, but was", activities[0].End)
     }
 
-    expOutput := fmt.Sprintf("started activity %d\n", activities[0].Id)
+    expOutput := fmt.Sprintf("started activity %d", activities[0].Id)
     if cmdOutput != expOutput {
       t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
     }
@@ -148,7 +148,7 @@ func TestStartCommand_Run_WithAllAttribs(t *testing.T) {
       t.Error("expected end time to be zero, but was", activities[0].End)
     }
 
-    expOutput := fmt.Sprintf("started activity %d\n", activities[0].Id)
+    expOutput := fmt.Sprintf("started activity %d", activities[0].Id)
     if cmdOutput != expOutput {
       t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
     }
@@ -211,7 +211,7 @@ func TestStopCommand_Run_WithNoArgs(t *testing.T) {
       }
     }
 
-    expOutput := fmt.Sprintf("stopped activity %d\nstopped activity %d\n",
+    expOutput := fmt.Sprintf("stopped activity %d\nstopped activity %d",
       foundActivity_1.Id, foundActivity_2.Id)
     if cmdOutput != expOutput {
       t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
@@ -250,12 +250,12 @@ func TestStatusCommand_Run_WithNoArgs(t *testing.T) {
       t.Error(cmdErr)
     }
 
-    expLine1 := fmt.Sprint("id\tname\tproject\tstate\tduration\n")
+    expLine1 := fmt.Sprint("id\tname\tproject\tstate\tduration")
     if !strings.Contains(cmdOutput, expLine1) {
       t.Errorf("expected output to contain '%s'", expLine1)
     }
 
-    expLine2 := fmt.Sprintf("%d\t%s\t%s\t%s\t%s\n", activity_1.Id,
+    expLine2 := fmt.Sprintf("%d\t%s\t%s\t%s\t%s", activity_1.Id,
       activity_1.Name, activity_1.Project, activity_1.Status(),
       activity_1.Duration().String())
     if !strings.Contains(cmdOutput, expLine2) {

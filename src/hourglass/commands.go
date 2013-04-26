@@ -47,7 +47,7 @@ func (StartCommand) Run(db *Database, args ...string) (output string, err error)
   }
   err = db.SaveActivity(activity)
   if err == nil {
-    output = fmt.Sprintf("started activity %d\n", activity.Id)
+    output = fmt.Sprintf("started activity %d", activity.Id)
   }
   return
 }
@@ -74,7 +74,7 @@ func (StopCommand) Run(db *Database, args ...string) (output string, err error) 
       if err != nil {
         return
       }
-      output += fmt.Sprintf("stopped activity %d\n", activity.Id)
+      output += fmt.Sprintf("stopped activity %d", activity.Id)
     }
   }
 
@@ -103,11 +103,11 @@ func (StatusCommand) Run(db *Database, args ...string) (output string, err error
   }
 
   if len(activities) == 0 {
-    output = "there have been no activities today\n"
+    output = "there have been no activities today"
   } else {
-    output = fmt.Sprint("id\tname\tproject\tstate\tduration\n")
+    output = fmt.Sprint("id\tname\tproject\tstate\tduration")
     for _, activity := range(activities) {
-      output += fmt.Sprintf("%d\t%s\t%s\t%s\t%s\n", activity.Id, activity.Name,
+      output += fmt.Sprintf("\n%d\t%s\t%s\t%s\t%s", activity.Id, activity.Name,
           activity.Project, activity.Status(), activity.Duration().String())
     }
   }
