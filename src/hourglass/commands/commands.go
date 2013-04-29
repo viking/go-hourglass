@@ -5,6 +5,7 @@ import (
   "fmt"
   . "hourglass/database"
   . "hourglass/activity"
+  . "hourglass/clock"
 )
 
 const (
@@ -27,7 +28,7 @@ type Command interface {
 /* start */
 type StartCommand struct{}
 
-func (StartCommand) Run(db Database, args ...string) (output string, err error) {
+func (StartCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
   var name, project string
   var tags []string
 
@@ -50,7 +51,7 @@ func (StartCommand) Run(db Database, args ...string) (output string, err error) 
 
   activity := &Activity{
     Name: name, Project: project, Tags: tags,
-    Start: time.Now().UTC(),
+    Start: c.Now(),
   }
   err = db.SaveActivity(activity)
   if err == nil {
@@ -66,10 +67,10 @@ func (StartCommand) Help() string {
 /* stop */
 type StopCommand struct{}
 
-func (StopCommand) Run(db Database, args ...string) (output string, err error) {
+func (StopCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
   var activities []*Activity
 
-  end := time.Now().UTC()
+  end := c.Now()
   if len(args) == 0 {
     activities, err = db.FindRunningActivities()
     if err != nil {
@@ -98,12 +99,13 @@ func (StopCommand) Help() string {
 /* status */
 type StatusCommand struct{}
 
-func (StatusCommand) Run(db Database, args ...string) (output string, err error) {
-  now := time.Now()
+func (StatusCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
 
   if len(args) == 0 {
+    now := c.Now()
+
     /* midnight today */
-    lower := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UTC()
+    lower := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
     /* midnight tomorrow */
     upper := lower.Add(time.Hour * 24)
 
@@ -120,7 +122,7 @@ func (StatusCommand) Run(db Database, args ...string) (output string, err error)
       for _, activity := range(activities) {
         output += fmt.Sprintf("\n| %d\t| %s\t| %s\t| %s\t| %s\t| %s",
           activity.Id, activity.Name, activity.Project, activity.TagList(),
-          activity.Status(), activity.Duration())
+          activity.Status(), activity.Duration(c))
       }
     }
   } else if args[0] == "all" {
@@ -138,7 +140,7 @@ func (StatusCommand) Run(db Database, args ...string) (output string, err error)
         output += fmt.Sprintf("\n| %04d-%02d-%02d\t| %d\t| %s\t| %s\t| %s\t| %s\t| %s",
           activity.Start.Year(), activity.Start.Month(), activity.Start.Day(),
           activity.Id, activity.Name, activity.Project, activity.TagList(),
-          activity.Status(), activity.Duration())
+          activity.Status(), activity.Duration(c))
       }
     }
   }

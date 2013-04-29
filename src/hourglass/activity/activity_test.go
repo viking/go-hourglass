@@ -5,25 +5,41 @@ import (
   "time"
 )
 
+/* fake clock */
+type fakeClock struct {
+  now time.Time
+}
+func (c fakeClock) Now() time.Time {
+  return c.now
+}
+func (c fakeClock) Local(t time.Time) time.Time {
+  return t.Local()
+}
+func (c fakeClock) Since(t time.Time) time.Duration {
+  return c.now.Sub(t)
+}
+
 func TestActivity_Duration(t *testing.T) {
+  c := fakeClock{time.Now()}
   activity := Activity{Name: "foo", Project: "bar"}
   activity.Start = time.Date(2013, time.April, 24, 13, 0, 0, 0, time.UTC)
 
   duration := time.Duration(time.Hour)
   activity.End = activity.Start.Add(duration)
-  result := activity.Duration()
+  result := activity.Duration(c)
   if Duration(duration) != result {
     t.Error("expected", duration, "got", result)
   }
 }
 
 func TestActivity_Duration_WithNoEnd(t *testing.T) {
+  c := fakeClock{time.Now()}
   activity := Activity{Name: "foo", Project: "bar"}
-  activity.Start = time.Now().Add(time.Duration(-time.Hour))
+  activity.Start = c.Now().Add(time.Duration(-time.Hour))
 
-  duration := time.Since(activity.Start)
-  result := time.Duration(activity.Duration())
-  if result - duration > time.Microsecond {
+  duration := c.Since(activity.Start)
+  result := time.Duration(activity.Duration(c))
+  if result != duration {
     t.Error("expected", duration, "got", result)
   }
 }

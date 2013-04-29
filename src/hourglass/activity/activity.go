@@ -4,6 +4,7 @@ import (
   "time"
   "strings"
   "fmt"
+  . "hourglass/clock"
 )
 
 type Activity struct {
@@ -35,9 +36,9 @@ func (a *Activity) SetTagList(tagList string) {
   }
 }
 
-func (a *Activity) Duration() Duration {
+func (a *Activity) Duration(clock Clock) Duration {
   if a.IsRunning() {
-    return Duration(time.Since(a.Start))
+    return Duration(clock.Since(a.Start))
   }
   return Duration(a.End.Sub(a.Start))
 }
