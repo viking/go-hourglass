@@ -101,11 +101,12 @@ var startTests = []struct {
   tags []string
   output string
   err bool
+  syntaxErr bool
 }{
-  {"", "", nil, "", true},
-  {"foo", "", nil, "started activity 1", false},
-  {"foo", "bar", nil, "started activity 1", false},
-  {"foo", "bar", []string{"baz"}, "started activity 1", false},
+  {"", "", nil, "", true, true},
+  {"foo", "", nil, "started activity 1", false, false},
+  {"foo", "bar", nil, "started activity 1", false, false},
+  {"foo", "bar", []string{"baz"}, "started activity 1", false, false},
 }
 
 func TestStartCommand_Run(t *testing.T) {
@@ -132,6 +133,11 @@ func TestStartCommand_Run(t *testing.T) {
     if err != nil {
       if !config.err {
         t.Errorf("test %d: %s", i, err)
+      } else if config.syntaxErr {
+        _, ok := err.(SyntaxErr)
+        if !ok {
+          t.Errorf("test %d: expected error type SyntaxErr, got %T", i, err)
+        }
       }
       continue
     }

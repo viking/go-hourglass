@@ -2,7 +2,6 @@ package commands
 
 import (
   "time"
-  "errors"
   "fmt"
   . "hourglass/database"
   . "hourglass/activity"
@@ -13,6 +12,12 @@ const (
   StopHelp = "Usage: %s stop\n\nStop all activities"
   StatusHelp = "Usage: %s status\n\nShow activity status"
 )
+
+type SyntaxErr string
+
+func (s SyntaxErr) Error() string {
+  return fmt.Sprint("syntax error: ", string(s))
+}
 
 type Command interface {
   Run(db Database, args ...string) (string, error)
@@ -27,7 +32,7 @@ func (StartCommand) Run(db Database, args ...string) (output string, err error) 
   var tags []string
 
   if len(args) == 0 {
-    err = errors.New("missing name argument")
+    err = SyntaxErr("missing name argument")
     return
   }
 
