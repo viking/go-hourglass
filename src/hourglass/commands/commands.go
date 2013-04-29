@@ -115,9 +115,9 @@ func (StatusCommand) Run(db Database, args ...string) (output string, err error)
   if len(activities) == 0 {
     output = "there have been no activities today"
   } else {
-    output = fmt.Sprint("id\tname\tproject\ttags\tstate\tduration")
+    output = fmt.Sprint("| id\t| name\t| project\t| tags\t| state\t| duration")
     for _, activity := range(activities) {
-      output += fmt.Sprintf("\n%d\t%s\t%s\t%s\t%s\t%s", activity.Id, activity.Name,
+      output += fmt.Sprintf("\n| %d\t| %s\t| %s\t| %s\t| %s\t| %s", activity.Id, activity.Name,
           activity.Project, activity.TagList(), activity.Status(),
           activity.Duration())
     }

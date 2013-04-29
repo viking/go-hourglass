@@ -250,7 +250,7 @@ var statusTests = []struct {
       &Activity{Name: "bar", Project: "baz", Start: ago(time.Hour)},
     },
     nil,
-    "id\tname\tproject\ttags\tstate\tduration\n1\tfoo\t\tone, two\tstopped\t01h00m\n2\tbar\tbaz\t\trunning\t01h00m",
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n| 1\t| foo\t| \t| one, two\t| stopped\t| 01h00m\n| 2\t| bar\t| baz\t| \t| running\t| 01h00m",
     false,
   },
   /* listing only today's activities */
@@ -260,7 +260,7 @@ var statusTests = []struct {
       &Activity{Name: "bar", Start: ago(time.Hour)},
     },
     nil,
-    "id\tname\tproject\ttags\tstate\tduration\n2\tbar\t\t\trunning\t01h00m",
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n| 2\t| bar\t| \t| \t| running\t| 01h00m",
     false,
   },
   /* output when there are no activities */
