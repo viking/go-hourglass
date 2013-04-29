@@ -1,9 +1,11 @@
-package hourglass
+package commands
 
 import (
   "testing"
   "time"
   "sort"
+  . "hourglass/activity"
+  . "hourglass/database"
 )
 
 /* Activity sorting */

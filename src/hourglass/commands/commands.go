@@ -1,9 +1,11 @@
-package hourglass
+package commands
 
 import (
   "time"
   "errors"
   "fmt"
+  . "hourglass/database"
+  . "hourglass/activity"
 )
 
 const (
@@ -25,7 +27,7 @@ func (StartCommand) Run(db Database, args ...string) (output string, err error) 
   var tags []string
 
   if len(args) == 0 {
-    err = errors.New("Missing name argument")
+    err = errors.New("missing name argument")
     return
   }
 

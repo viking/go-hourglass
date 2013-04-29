@@ -1,4 +1,4 @@
-package hourglass
+package database
 
 import (
   "testing"
@@ -8,6 +8,7 @@ import (
   "strings"
   "database/sql"
   sqlite "github.com/mattn/go-sqlite3"
+  . "hourglass/activity"
 )
 
 func DbTestRun(f func (db *DB), t *testing.T) {

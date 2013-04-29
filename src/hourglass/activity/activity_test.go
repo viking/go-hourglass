@@ -1,4 +1,4 @@
-package hourglass
+package activity
 
 import (
   "testing"

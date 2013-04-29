@@ -1,4 +1,4 @@
-package hourglass
+package database
 
 import (
   "database/sql"
@@ -7,6 +7,7 @@ import (
   "errors"
   "io"
   "fmt"
+  . "hourglass/activity"
 )
 
 const DatabaseVersion = 2
