@@ -89,9 +89,18 @@ func (db *fakeDb) FindActivitiesBetween(lower time.Time, upper time.Time) ([]*Ac
   return activities, nil
 }
 
-/* time helper */
+/* time helpers */
+const (
+  day = time.Hour * 24
+  week = day * 7
+)
+
 func ago(d time.Duration) time.Time {
   return time.Now().UTC().Add(-d)
+}
+
+func when(year, month, day, hour int) time.Time {
+  return time.Date(year, time.Month(month), day, hour, 0, 0, 0, time.Local).UTC()
 }
 
 /* start command tests */
@@ -250,9 +259,12 @@ var statusTests = []struct {
       &Activity{Name: "bar", Project: "baz", Start: ago(time.Hour)},
     },
     nil,
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n| 1\t| foo\t| \t| one, two\t| stopped\t| 01h00m\n| 2\t| bar\t| baz\t| \t| running\t| 01h00m",
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+      "| 1\t| foo\t| \t| one, two\t| stopped\t| 01h00m\n" +
+      "| 2\t| bar\t| baz\t| \t| running\t| 01h00m",
     false,
   },
+
   /* listing only today's activities */
   {
     []*Activity{
@@ -260,11 +272,31 @@ var statusTests = []struct {
       &Activity{Name: "bar", Start: ago(time.Hour)},
     },
     nil,
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n| 2\t| bar\t| \t| \t| running\t| 01h00m",
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+      "| 2\t| bar\t| \t| \t| running\t| 01h00m",
     false,
   },
+
   /* output when there are no activities */
   {nil, nil, "there have been no activities today", false},
+
+  /* all argument */
+  {
+    []*Activity{
+      &Activity{Name: "baz", Start: when(2013, 4, 15, 14), End: when(2013, 4, 15, 15)},
+      &Activity{Name: "foo", Start: when(2013, 4, 22, 14), End: when(2013, 4, 22, 15)},
+      &Activity{Name: "bar", Start: when(2013, 4, 29, 14), End: when(2013, 4, 29, 15)},
+    },
+    []string{"all"},
+    "| date\t| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+      "| 2013-04-15\t| 1\t| baz\t| \t| \t| stopped\t| 01h00m\n" +
+      "| 2013-04-22\t| 2\t| foo\t| \t| \t| stopped\t| 01h00m\n" +
+      "| 2013-04-29\t| 3\t| bar\t| \t| \t| stopped\t| 01h00m",
+    false,
+  },
+
+  /* all argument with no activities */
+  {nil, []string{"all"}, "there aren't any activities", false},
 }
 
 func TestStatusCommand_Run(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 const (
   StartHelp = "Usage: %s start <name> [project] [ [tag1, tag2, ...] ]\n\nStart a new activity"
   StopHelp = "Usage: %s stop\n\nStop all activities"
-  StatusHelp = "Usage: %s status\n\nShow activity status"
+  StatusHelp = "Usage: %s status [all]\n\nShow activity status"
 )
 
 type SyntaxErr string
@@ -101,25 +101,45 @@ type StatusCommand struct{}
 func (StatusCommand) Run(db Database, args ...string) (output string, err error) {
   now := time.Now()
 
-  /* midnight today */
-  lower := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UTC()
-  /* midnight tomorrow */
-  upper := lower.Add(time.Hour * 24)
+  if len(args) == 0 {
+    /* midnight today */
+    lower := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UTC()
+    /* midnight tomorrow */
+    upper := lower.Add(time.Hour * 24)
 
-  var activities []*Activity
-  activities, err = db.FindActivitiesBetween(lower, upper)
-  if err != nil {
-    return
-  }
+    var activities []*Activity
+    activities, err = db.FindActivitiesBetween(lower, upper)
+    if err != nil {
+      return
+    }
 
-  if len(activities) == 0 {
-    output = "there have been no activities today"
-  } else {
-    output = fmt.Sprint("| id\t| name\t| project\t| tags\t| state\t| duration")
-    for _, activity := range(activities) {
-      output += fmt.Sprintf("\n| %d\t| %s\t| %s\t| %s\t| %s\t| %s", activity.Id, activity.Name,
-          activity.Project, activity.TagList(), activity.Status(),
-          activity.Duration())
+    if len(activities) == 0 {
+      output = "there have been no activities today"
+    } else {
+      output = fmt.Sprint("| id\t| name\t| project\t| tags\t| state\t| duration")
+      for _, activity := range(activities) {
+        output += fmt.Sprintf("\n| %d\t| %s\t| %s\t| %s\t| %s\t| %s",
+          activity.Id, activity.Name, activity.Project, activity.TagList(),
+          activity.Status(), activity.Duration())
+      }
+    }
+  } else if args[0] == "all" {
+    var activities []*Activity
+    activities, err = db.FindAllActivities()
+    if err != nil {
+      return
+    }
+
+    if len(activities) == 0 {
+      output = "there aren't any activities"
+    } else {
+      output = fmt.Sprint("| date\t| id\t| name\t| project\t| tags\t| state\t| duration")
+      for _, activity := range(activities) {
+        output += fmt.Sprintf("\n| %04d-%02d-%02d\t| %d\t| %s\t| %s\t| %s\t| %s\t| %s",
+          activity.Start.Year(), activity.Start.Month(), activity.Start.Day(),
+          activity.Id, activity.Name, activity.Project, activity.TagList(),
+          activity.Status(), activity.Duration())
+      }
     }
   }
 
