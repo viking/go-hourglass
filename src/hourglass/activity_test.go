@@ -12,7 +12,7 @@ func TestActivity_Duration(t *testing.T) {
   duration := time.Duration(time.Hour)
   activity.End = activity.Start.Add(duration)
   result := activity.Duration()
-  if duration != result {
+  if Duration(duration) != result {
     t.Error("expected", duration, "got", result)
   }
 }
@@ -22,7 +22,7 @@ func TestActivity_Duration_WithNoEnd(t *testing.T) {
   activity.Start = time.Now().Add(time.Duration(-time.Hour))
 
   duration := time.Since(activity.Start)
-  result := activity.Duration()
+  result := time.Duration(activity.Duration())
   if result - duration > time.Microsecond {
     t.Error("expected", duration, "got", result)
   }
@@ -107,5 +107,22 @@ func TestActivity_Clone(t *testing.T) {
   activity_2.Tags[0] = "junk"
   if activity_1.Tags[0] == activity_2.Tags[0] {
     t.Error("activity tags weren't cloned")
+  }
+}
+
+var durationTests = []struct {
+  num int64
+  output string
+}{
+  {int64(time.Hour), "01h00m"},
+  {int64((4 * time.Hour) + (30 * time.Minute)), "04h30m"},
+}
+
+func TestDuration_String(t *testing.T) {
+  for _, config := range durationTests {
+    duration := Duration(config.num)
+    if duration.String() != config.output {
+      t.Errorf("expected '%s', got '%s'", config.output, duration.String())
+    }
   }
 }

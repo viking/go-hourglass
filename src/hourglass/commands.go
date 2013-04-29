@@ -13,19 +13,19 @@ const (
 )
 
 type Command interface {
-  Run(db *Database, args ...string) (string, error)
+  Run(db Database, args ...string) (string, error)
   Help() string
 }
 
 /* start */
 type StartCommand struct{}
 
-func (StartCommand) Run(db *Database, args ...string) (output string, err error) {
+func (StartCommand) Run(db Database, args ...string) (output string, err error) {
   var name, project string
   var tags []string
 
   if len(args) == 0 {
-    err = errors.New("missing name argument")
+    err = errors.New("Missing name argument")
     return
   }
 
@@ -59,7 +59,7 @@ func (StartCommand) Help() string {
 /* stop */
 type StopCommand struct{}
 
-func (StopCommand) Run(db *Database, args ...string) (output string, err error) {
+func (StopCommand) Run(db Database, args ...string) (output string, err error) {
   var activities []*Activity
 
   end := time.Now().UTC()
@@ -68,11 +68,14 @@ func (StopCommand) Run(db *Database, args ...string) (output string, err error) 
     if err != nil {
       return
     }
-    for _, activity := range activities {
+    for i, activity := range activities {
       activity.End = end
       err = db.SaveActivity(activity)
       if err != nil {
         return
+      }
+      if i > 0 {
+        output += "\n"
       }
       output += fmt.Sprintf("stopped activity %d", activity.Id)
     }
@@ -88,7 +91,7 @@ func (StopCommand) Help() string {
 /* status */
 type StatusCommand struct{}
 
-func (StatusCommand) Run(db *Database, args ...string) (output string, err error) {
+func (StatusCommand) Run(db Database, args ...string) (output string, err error) {
   now := time.Now()
 
   /* midnight today */
@@ -105,10 +108,11 @@ func (StatusCommand) Run(db *Database, args ...string) (output string, err error
   if len(activities) == 0 {
     output = "there have been no activities today"
   } else {
-    output = fmt.Sprint("id\tname\tproject\tstate\tduration")
+    output = fmt.Sprint("id\tname\tproject\ttags\tstate\tduration")
     for _, activity := range(activities) {
-      output += fmt.Sprintf("\n%d\t%s\t%s\t%s\t%s", activity.Id, activity.Name,
-          activity.Project, activity.Status(), activity.Duration().String())
+      output += fmt.Sprintf("\n%d\t%s\t%s\t%s\t%s\t%s", activity.Id, activity.Name,
+          activity.Project, activity.TagList(), activity.Status(),
+          activity.Duration())
     }
   }
 

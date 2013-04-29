@@ -3,157 +3,166 @@ package hourglass
 import (
   "testing"
   "time"
-  "fmt"
-  "strings"
+  "sort"
 )
 
-func TestStartCommand_Run_WithMissingName(t *testing.T) {
-  f := func (db *Database) {
-    c := StartCommand{}
-    _, cmdErr := c.Run(db)
-    if cmdErr == nil {
-      t.Error("expected command error, but there wasn't one")
-    }
-  }
-  DbTestRun(f, t)
+/* Activity sorting */
+type activitySlice []*Activity
+
+func (a activitySlice) Len() int {
+  return len(a)
 }
 
-func TestStartCommand_Run_WithName(t *testing.T) {
-  f := func (db *Database) {
-    c := StartCommand{}
-    cmdOutput, cmdErr := c.Run(db, "foo")
-    if cmdErr != nil {
-      t.Error(cmdErr)
-      return
-    }
-
-    activities, findErr := db.FindAllActivities()
-    if findErr != nil {
-      t.Error(findErr)
-      return
-    }
-
-    if len(activities) != 1 {
-      t.Error("expected 1 activity, got", len(activities))
-    }
-    if activities[0].Name != "foo" {
-      t.Error("expected name to be foo, but was", activities[0].Name)
-    }
-    if activities[0].Project != "" {
-      t.Error("expected project to be empty, but was", activities[0].Project)
-    }
-    if len(activities[0].Tags) != 0 {
-      t.Error("expected tags to be empty, but was", activities[0].Tags)
-    }
-
-    duration := time.Since(activities[0].Start)
-    if duration > time.Second {
-      t.Error("expected start time to be", time.Now(), "but was",
-        activities[0].Start.Local())
-    }
-
-    if !activities[0].End.IsZero() {
-      t.Error("expected end time to be zero, but was", activities[0].End)
-    }
-
-    expOutput := fmt.Sprintf("started activity %d", activities[0].Id)
-    if cmdOutput != expOutput {
-      t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
-    }
-  }
-  DbTestRun(f, t)
+func (a activitySlice) Less(i, j int) bool {
+  return a[i].Id < a[j].Id
 }
 
-func TestStartCommand_Run_WithNameAndProject(t *testing.T) {
-  f := func (db *Database) {
-    c := StartCommand{}
-    cmdOutput, cmdErr := c.Run(db, "foo", "bar")
-    if cmdErr != nil {
-      t.Error(cmdErr)
-      return
-    }
-
-    activities, findErr := db.FindAllActivities()
-    if findErr != nil {
-      t.Error(findErr)
-      return
-    }
-
-    if len(activities) != 1 {
-      t.Error("expected 1 activity, got", len(activities))
-    }
-    if activities[0].Name != "foo" {
-      t.Error("expected name to be foo, but was", activities[0].Name)
-    }
-    if activities[0].Project != "bar" {
-      t.Error("expected project to be bar, but was", activities[0].Project)
-    }
-    if len(activities[0].Tags) != 0 {
-      t.Error("expected tags to be empty, but was", activities[0].Tags)
-    }
-
-    duration := time.Since(activities[0].Start)
-    if duration > time.Second {
-      t.Error("expected start time to be", time.Now(), "but was",
-        activities[0].Start.Local())
-    }
-
-    if !activities[0].End.IsZero() {
-      t.Error("expected end time to be zero, but was", activities[0].End)
-    }
-
-    expOutput := fmt.Sprintf("started activity %d", activities[0].Id)
-    if cmdOutput != expOutput {
-      t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
-    }
-  }
-  DbTestRun(f, t)
+func (a activitySlice) Swap(i, j int) {
+  a[i], a[j] = a[j], a[i]
 }
 
-func TestStartCommand_Run_WithAllAttribs(t *testing.T) {
-  f := func (db *Database) {
-    c := StartCommand{}
-    cmdOutput, cmdErr := c.Run(db, "foo", "bar", "baz", "qux")
-    if cmdErr != nil {
-      t.Error(cmdErr)
-      return
-    }
+/* fakeDb */
+type fakeDb struct {
+  activityMap map[int64]*Activity
+}
 
-    activities, findErr := db.FindAllActivities()
-    if findErr != nil {
-      t.Error(findErr)
-      return
-    }
+func (db *fakeDb) Valid() (bool, error) {
+  return true, nil
+}
 
-    if len(activities) != 1 {
-      t.Error("expected 1 activity, got", len(activities))
-    }
-    if activities[0].Name != "foo" {
-      t.Error("expected name to be foo, but was", activities[0].Name)
-    }
-    if activities[0].Project != "bar" {
-      t.Error("expected project to be bar, but was", activities[0].Project)
-    }
-    if len(activities[0].Tags) != 2 || activities[0].Tags[0] != "baz" || activities[0].Tags[1] != "qux" {
-      t.Error("expected tags to be baz, but was", activities[0].Tags)
-    }
+func (db *fakeDb) Migrate() error {
+  return nil
+}
 
-    duration := time.Since(activities[0].Start)
-    if duration > time.Second {
-      t.Error("expected start time to be", time.Now(), "but was",
-        activities[0].Start.Local())
-    }
+func (db *fakeDb) SaveActivity(a *Activity) error {
+  if db.activityMap == nil {
+    db.activityMap = make(map[int64]*Activity)
+  }
+  if a.Id == 0 {
+    a.Id = int64(len(db.activityMap)) + 1
+  }
+  db.activityMap[a.Id] = a
 
-    if !activities[0].End.IsZero() {
-      t.Error("expected end time to be zero, but was", activities[0].End)
-    }
+  return nil
+}
 
-    expOutput := fmt.Sprintf("started activity %d", activities[0].Id)
-    if cmdOutput != expOutput {
-      t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
+func (db *fakeDb) FindActivity(id int64) (*Activity, error) {
+  activity, ok := db.activityMap[id]
+  if !ok {
+    return nil, ErrNotFound
+  }
+  return activity, nil
+}
+
+func (db *fakeDb) FindAllActivities() ([]*Activity, error) {
+  activities := make(activitySlice, len(db.activityMap))
+  i := 0
+  for _, a := range(db.activityMap) {
+    activities[i] = a
+    i += 1
+  }
+  sort.Sort(activities)
+  return activities, nil
+}
+
+func (db *fakeDb) FindRunningActivities() ([]*Activity, error) {
+  var activities activitySlice
+  for _, a := range db.activityMap {
+    if a.IsRunning() {
+      activities = append(activities, a)
     }
   }
-  DbTestRun(f, t)
+  sort.Sort(activities)
+  return activities, nil
+}
+
+func (db *fakeDb) FindActivitiesBetween(lower time.Time, upper time.Time) ([]*Activity, error) {
+  var activities activitySlice
+  for _, a := range db.activityMap {
+    if a.Start.Equal(lower) || a.Start.After(lower) && a.Start.Before(upper) {
+      activities = append(activities, a)
+    }
+  }
+  sort.Sort(activities)
+  return activities, nil
+}
+
+/* time helper */
+func ago(d time.Duration) time.Time {
+  return time.Now().UTC().Add(-d)
+}
+
+/* start command tests */
+var startTests = []struct {
+  name string
+  project string
+  tags []string
+  output string
+  err bool
+}{
+  {"", "", nil, "", true},
+  {"foo", "", nil, "started activity 1", false},
+  {"foo", "bar", nil, "started activity 1", false},
+  {"foo", "bar", []string{"baz"}, "started activity 1", false},
+}
+
+func TestStartCommand_Run(t *testing.T) {
+  for i, config := range startTests {
+    c := StartCommand{}
+
+    var args []string
+    if config.name != "" {
+      args = append(args, config.name)
+      if config.project != "" {
+        args = append(args, config.project)
+        if len(config.tags) != 0 {
+          args = append(args, config.tags...)
+        }
+      }
+    }
+    db := &fakeDb{}
+    output, err := c.Run(db, args...)
+
+    if output != config.output {
+      t.Errorf("expected output to be '%s', but was '%s'", config.output, output)
+    }
+
+    if err != nil {
+      if !config.err {
+        t.Errorf("test %d: %s", i, err)
+      }
+      continue
+    }
+    if config.err {
+      t.Errorf("test %d: expected error, got nil", i)
+    }
+
+    if len(db.activityMap) != 1 {
+      t.Errorf("test %d: activity wasn't saved", i)
+      continue
+    }
+
+    a := db.activityMap[1]
+    if a.Name != config.name {
+      t.Errorf("test %d: expected '%s', got '%s'", i, config.name, a.Name)
+    }
+    if a.Project != config.project {
+      t.Errorf("test %d: expected '%s', got '%s'", i, config.project, a.Project)
+    }
+
+    ok := len(a.Tags) == len(config.tags)
+    if ok {
+      for i, tag := range config.tags {
+        ok = tag == a.Tags[i]
+        if !ok {
+          break
+        }
+      }
+    }
+    if !ok {
+      t.Errorf("test %d: expected %v, got %v", i, config.tags, a.Tags)
+    }
+  }
 }
 
 func TestStartCommand_Help(t *testing.T) {
@@ -163,61 +172,54 @@ func TestStartCommand_Help(t *testing.T) {
   }
 }
 
-func TestStopCommand_Run_WithNoArgs(t *testing.T) {
-  f := func (db *Database) {
-    start := time.Now().Add(-time.Hour)
-    activity_1 := &Activity{Name: "foo", Start: start}
-    activity_2 := &Activity{Name: "bar", Start: start}
+/* stop command tests */
+var stopTests = []struct {
+  startSince []time.Duration
+  args []string
+  runningAfter []bool
+  output string
+  err bool
+}{
+  /* Stop all when there are no args */
+  {[]time.Duration{time.Hour, time.Hour}, nil, []bool{false, false}, "stopped activity 1\nstopped activity 2", false},
+}
 
-    var saveErr error
-    saveErr = db.SaveActivity(activity_1)
-    if saveErr != nil {
-      t.Error(saveErr)
-    }
-    saveErr = db.SaveActivity(activity_2)
-    if saveErr != nil {
-      t.Error(saveErr)
-    }
-
+func TestStopCommand_Run(t *testing.T) {
+  for i, config := range stopTests {
     c := StopCommand{}
-    cmdOutput, cmdErr := c.Run(db)
-    if cmdErr != nil {
-      t.Error(cmdErr)
+    db := &fakeDb{}
+
+    now := time.Now().UTC()
+    for _, duration := range config.startSince {
+      activity := &Activity{Name: "foo", Start: now.Add(-duration)}
+      db.SaveActivity(activity)
     }
 
-    expected := time.Now()
+    output, err := c.Run(db, config.args...)
+    if output != config.output {
+      t.Errorf("expected output to be '%s', but was '%s'", config.output, output)
+    }
 
-    var foundActivity_1, foundActivity_2 *Activity
-    var findErr error
-    foundActivity_1, findErr = db.FindActivity(activity_1.Id)
-    if findErr != nil {
-      t.Error(findErr)
-    } else {
-      duration := expected.Sub(foundActivity_1.End)
-      if duration > time.Second {
-        t.Error("expected activity 1's end time to be", expected, "but was",
-          foundActivity_1.End)
+    if err != nil {
+      if !config.err {
+        t.Errorf("test %d: %s", i, err)
       }
+      continue
+    }
+    if config.err {
+      t.Errorf("test %d: expected error, got nil", i)
     }
 
-    foundActivity_2, findErr = db.FindActivity(activity_2.Id)
-    if findErr != nil {
-      t.Error(findErr)
-    } else {
-      duration := expected.Sub(foundActivity_2.End)
-      if duration > time.Second {
-        t.Error("expected activity 2's end time to be", expected, "but was",
-          foundActivity_2.End)
+    for j, running := range config.runningAfter {
+      activity, _ := db.FindActivity(int64(j + 1))
+      if activity.IsRunning() != running {
+        t.Errorf("expected %t, got %t", running, activity.IsRunning())
       }
-    }
-
-    expOutput := fmt.Sprintf("stopped activity %d\nstopped activity %d",
-      foundActivity_1.Id, foundActivity_2.Id)
-    if cmdOutput != expOutput {
-      t.Errorf("expected output to be '%s' but was '%s'", expOutput, cmdOutput)
+      if !running && time.Since(activity.End) > time.Second {
+        t.Errorf("activity's end time was wrong: %s", activity.End)
+      }
     }
   }
-  DbTestRun(f, t)
 }
 
 func TestStopCommand_Help(t *testing.T) {
@@ -227,53 +229,45 @@ func TestStopCommand_Help(t *testing.T) {
   }
 }
 
-func TestStatusCommand_Run_WithNoArgs(t *testing.T) {
-  f := func (db *Database) {
-    now := time.Now().UTC()
-    start := now.Add(-time.Hour)
-    activity_1 := &Activity{Name: "foo", Start: start, End: now}
-    activity_2 := &Activity{Name: "bar", Project: "baz", Start: start}
-
-    var saveErr error
-    saveErr = db.SaveActivity(activity_1)
-    if saveErr != nil {
-      t.Error(saveErr)
-    }
-    saveErr = db.SaveActivity(activity_2)
-    if saveErr != nil {
-      t.Error(saveErr)
-    }
-
-    c := StatusCommand{}
-    cmdOutput, cmdErr := c.Run(db)
-    if cmdErr != nil {
-      t.Error(cmdErr)
-    }
-
-    expLine1 := fmt.Sprint("id\tname\tproject\tstate\tduration")
-    if !strings.Contains(cmdOutput, expLine1) {
-      t.Errorf("expected output to contain '%s'", expLine1)
-    }
-
-    expLine2 := fmt.Sprintf("%d\t%s\t%s\t%s\t%s", activity_1.Id,
-      activity_1.Name, activity_1.Project, activity_1.Status(),
-      activity_1.Duration().String())
-    if !strings.Contains(cmdOutput, expLine2) {
-      t.Errorf("expected output to contain '%s'", expLine2)
-    }
-
-    expLine3 := fmt.Sprintf("%d\t%s\t%s\t%s\t", activity_2.Id, activity_2.Name,
-      activity_2.Project, activity_2.Status())
-    if !strings.Contains(cmdOutput, expLine3) {
-      t.Errorf("expected output to contain '%s'", expLine3)
-    }
-  }
-  DbTestRun(f, t)
+var statusTests = []struct {
+  activities []*Activity
+  args []string
+  output string
+  err bool
+}{
+  {
+    []*Activity{
+      &Activity{Name: "foo", Tags: []string{"one", "two"}, Start: ago(time.Hour), End: ago(0)},
+      &Activity{Name: "bar", Project: "baz", Start: ago(time.Hour)},
+    },
+    nil,
+    "id\tname\tproject\ttags\tstate\tduration\n1\tfoo\t\tone, two\tstopped\t01h00m\n2\tbar\tbaz\t\trunning\t01h00m",
+    false,
+  },
 }
 
-func TestStatusCommand_Help(t *testing.T) {
-  c := StatusCommand{}
-  if c.Help() == "" {
-    t.Error("no help available")
+func TestStatusCommand_Run(t *testing.T) {
+  for i, config := range statusTests {
+    c := StatusCommand{}
+    db := &fakeDb{}
+
+    for _, activity := range config.activities {
+      db.SaveActivity(activity)
+    }
+
+    output, err := c.Run(db, config.args...)
+    if output != config.output {
+      t.Errorf("expected output to be '%s', but was '%s'", config.output, output)
+    }
+
+    if err != nil {
+      if !config.err {
+        t.Errorf("test %d: %s", i, err)
+      }
+      continue
+    }
+    if config.err {
+      t.Errorf("test %d: expected error, got nil", i)
+    }
   }
 }

@@ -3,6 +3,7 @@ package hourglass
 import (
   "time"
   "strings"
+  "fmt"
 )
 
 type Activity struct {
@@ -12,6 +13,14 @@ type Activity struct {
   Tags []string
   Start time.Time
   End time.Time
+}
+
+type Duration time.Duration
+
+func (d Duration) String() string {
+  hours := int64(d) / int64(time.Hour)
+  minutes := int64(d) % int64(time.Hour) / int64(time.Minute)
+  return fmt.Sprintf("%02dh%02dm", hours, minutes)
 }
 
 func (a *Activity) TagList() string {
@@ -26,11 +35,11 @@ func (a *Activity) SetTagList(tagList string) {
   }
 }
 
-func (a *Activity) Duration() time.Duration {
+func (a *Activity) Duration() Duration {
   if a.IsRunning() {
-    return time.Since(a.Start)
+    return Duration(time.Since(a.Start))
   }
-  return a.End.Sub(a.Start)
+  return Duration(a.End.Sub(a.Start))
 }
 
 func (a *Activity) IsRunning() bool {

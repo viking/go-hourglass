@@ -10,7 +10,8 @@ import (
   sqlite "github.com/mattn/go-sqlite3"
 )
 
-func DbTestRun(f func (db *Database), t *testing.T) {
+func DbTestRun(f func (db *DB), t *testing.T) {
+  /* Create temporary file */
   dbFile, tempErr := ioutil.TempFile("", "hourglass")
   if tempErr != nil {
     t.Error(tempErr)
@@ -20,8 +21,9 @@ func DbTestRun(f func (db *Database), t *testing.T) {
     t.Error(closeErr)
   }
 
-  db := &Database{"sqlite", dbFile.Name(), nil}
+  db := &DB{"sqlite", dbFile.Name(), nil}
 
+  /* Check database validity, register driver if necessary */
   var ok bool
   var dbErr error
   if ok, dbErr = db.Valid(); !ok {
@@ -33,6 +35,7 @@ func DbTestRun(f func (db *Database), t *testing.T) {
     }
   }
 
+  /* Migrate the database and run the function */
   if ok {
     migrateErr := db.Migrate()
     if migrateErr != nil {
@@ -46,8 +49,8 @@ func DbTestRun(f func (db *Database), t *testing.T) {
   os.Remove(dbFile.Name())
 }
 
-func TestDatabase_SaveActivity(t *testing.T) {
-  f := func (db *Database) {
+func TestDB_SaveActivity(t *testing.T) {
+  f := func (db *DB) {
     activity := &Activity{Name: "foo", Project: "bar"}
     activity.End = time.Now().UTC()
     activity.Start = activity.End.Add(-time.Hour)
@@ -80,8 +83,8 @@ func TestDatabase_SaveActivity(t *testing.T) {
   DbTestRun(f, t)
 }
 
-func TestDatabase_SaveActivity_WithExistingActivity(t *testing.T) {
-  f := func (db *Database) {
+func TestDB_SaveActivity_WithExistingActivity(t *testing.T) {
+  f := func (db *DB) {
     activity := &Activity{Name: "foo", Project: "bar"}
     activity.End = time.Now().UTC()
     activity.Start = activity.End.Add(-time.Hour)
@@ -118,8 +121,8 @@ func TestDatabase_SaveActivity_WithExistingActivity(t *testing.T) {
 }
 
 
-func TestDatabase_FindActivity_WithNonExistantId(t *testing.T) {
-  f := func(db *Database) {
+func TestDB_FindActivity_WithNonExistantId(t *testing.T) {
+  f := func(db *DB) {
     _, findErr := db.FindActivity(1234)
     if findErr != ErrNotFound {
       t.Errorf("expected ErrNotFound, got %T", findErr)
@@ -129,8 +132,8 @@ func TestDatabase_FindActivity_WithNonExistantId(t *testing.T) {
   DbTestRun(f, t)
 }
 
-func TestDatabase_FindAllActivities(t *testing.T) {
-  f := func (db *Database) {
+func TestDB_FindAllActivities(t *testing.T) {
+  f := func (db *DB) {
     activity := &Activity{Name: "foo", Project: "bar"}
     activity.End = time.Now().UTC()
     activity.Start = activity.End.Add(-time.Hour)
@@ -159,8 +162,8 @@ func TestDatabase_FindAllActivities(t *testing.T) {
   DbTestRun(f, t)
 }
 
-func TestDatabase_FindRunningActivities(t *testing.T) {
-  f := func (db *Database) {
+func TestDB_FindRunningActivities(t *testing.T) {
+  f := func (db *DB) {
     activity_1 := &Activity{Name: "foo", Project: "bar"}
     activity_1.End = time.Now()
     activity_1.Start = activity_1.End.Add(-time.Hour)
@@ -195,8 +198,8 @@ func TestDatabase_FindRunningActivities(t *testing.T) {
   DbTestRun(f, t)
 }
 
-func TestDatabase_FindActivitiesBetween(t *testing.T) {
-  f := func (db *Database) {
+func TestDB_FindActivitiesBetween(t *testing.T) {
+  f := func (db *DB) {
     now := time.Now()
 
     activity_1 := &Activity{Name: "foo", Project: "bar"}
