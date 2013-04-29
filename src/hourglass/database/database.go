@@ -151,13 +151,13 @@ func (db *DB) SaveActivity(a *Activity) error {
       INSERT INTO activities (name, project, tags, start, end)
       VALUES(?, ?, ?, ?, ?)
     `
-    args = []interface{}{a.Name, a.Project, a.TagList(), a.Start, a.End}
+    args = []interface{}{a.Name, a.Project, a.TagList(), a.Start.UTC(), a.End.UTC()}
   } else {
     query = `
       UPDATE activities SET name = ?, project = ?, tags = ?,
       start = ?, end = ? WHERE id = ?
     `
-    args = []interface{}{a.Name, a.Project, a.TagList(), a.Start, a.End, a.Id}
+    args = []interface{}{a.Name, a.Project, a.TagList(), a.Start.UTC(), a.End.UTC(), a.Id}
   }
 
   /* Execute the query */
@@ -210,7 +210,7 @@ func (db *DB) findActivities(predicate string, args ...interface{}) ([]*Activity
 
       scanErr := rows.Scan(&id, &name, &project, &tagList, &start, &end)
       if scanErr == nil {
-        activity := &Activity{Id: id, Name: name, Project: project, Start: start, End: end}
+        activity := &Activity{Id: id, Name: name, Project: project, Start: start.Local(), End: end.Local()}
         activity.SetTagList(tagList)
         activities = append(activities, activity)
       } else {
