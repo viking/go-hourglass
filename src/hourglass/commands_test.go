@@ -235,6 +235,7 @@ var statusTests = []struct {
   output string
   err bool
 }{
+  /* listing activities */
   {
     []*Activity{
       &Activity{Name: "foo", Tags: []string{"one", "two"}, Start: ago(time.Hour), End: ago(0)},
@@ -244,6 +245,18 @@ var statusTests = []struct {
     "id\tname\tproject\ttags\tstate\tduration\n1\tfoo\t\tone, two\tstopped\t01h00m\n2\tbar\tbaz\t\trunning\t01h00m",
     false,
   },
+  /* listing only today's activities */
+  {
+    []*Activity{
+      &Activity{Name: "foo", Start: ago(time.Hour * 48), End: ago(time.Hour * 24)},
+      &Activity{Name: "bar", Start: ago(time.Hour)},
+    },
+    nil,
+    "id\tname\tproject\ttags\tstate\tduration\n2\tbar\t\t\trunning\t01h00m",
+    false,
+  },
+  /* output when there are no activities */
+  {nil, nil, "there have been no activities today", false},
 }
 
 func TestStatusCommand_Run(t *testing.T) {
