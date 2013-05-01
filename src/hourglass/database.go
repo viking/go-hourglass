@@ -11,6 +11,23 @@ import (
 
 const DatabaseVersion = 2
 
+var ErrNotFound = errors.New("record not found")
+
+/* error helper */
+type DatabaseErrors struct {
+  Errors []string
+}
+func (e *DatabaseErrors) Error() string {
+  return strings.Join(e.Errors, "; ")
+}
+func (e *DatabaseErrors) Append(err error) {
+  e.Errors = append(e.Errors, err.Error())
+}
+func (e *DatabaseErrors) IsEmpty() bool {
+  return len(e.Errors) == 0
+}
+
+/* main interface */
 type Database interface {
   Valid() (bool, error)
   Migrate() error
@@ -21,31 +38,14 @@ type Database interface {
   FindActivitiesBetween(time.Time, time.Time) ([]*Activity, error)
 }
 
-type DatabaseErrors struct {
-  Errors []string
-}
-
-var ErrNotFound = errors.New("record not found")
-
-func (e *DatabaseErrors) Error() string {
-  return strings.Join(e.Errors, "; ")
-}
-
-func (e *DatabaseErrors) Append(err error) {
-  e.Errors = append(e.Errors, err.Error())
-}
-
-func (e *DatabaseErrors) IsEmpty() bool {
-  return len(e.Errors) == 0
-}
-
-type DB struct {
+/* sql backend */
+type Sql struct {
   DriverName string
   DataSourceName string
   Log io.Writer
 }
 
-func (db *DB) exec(conn *sql.DB, query string, args ...interface{}) (res sql.Result, err error) {
+func (db *Sql) exec(conn *sql.DB, query string, args ...interface{}) (res sql.Result, err error) {
   if db.Log != nil {
     message := fmt.Sprintf("exec: \"%s\" with args: %v\n", query, args)
     db.Log.Write([]byte(message))
@@ -54,7 +54,7 @@ func (db *DB) exec(conn *sql.DB, query string, args ...interface{}) (res sql.Res
   return
 }
 
-func (db *DB) query(conn *sql.DB, query string, args ...interface{}) (rows *sql.Rows, err error) {
+func (db *Sql) query(conn *sql.DB, query string, args ...interface{}) (rows *sql.Rows, err error) {
   if db.Log != nil {
     message := fmt.Sprintf("query: \"%s\" with args: %v\n", query, args)
     db.Log.Write([]byte(message))
@@ -63,7 +63,7 @@ func (db *DB) query(conn *sql.DB, query string, args ...interface{}) (rows *sql.
   return
 }
 
-func (db *DB) queryRow(conn *sql.DB, query string, args ...interface{}) (row *sql.Row) {
+func (db *Sql) queryRow(conn *sql.DB, query string, args ...interface{}) (row *sql.Row) {
   if db.Log != nil {
     message := fmt.Sprintf("queryRow: \"%s\" with args: %v\n", query, args)
     db.Log.Write([]byte(message))
@@ -72,7 +72,7 @@ func (db *DB) queryRow(conn *sql.DB, query string, args ...interface{}) (row *sq
   return
 }
 
-func (db *DB) Valid() (bool, error) {
+func (db *Sql) Valid() (bool, error) {
   conn, openErr := sql.Open(db.DriverName, db.DataSourceName)
   if openErr != nil {
     return false, openErr
@@ -85,7 +85,7 @@ func (db *DB) Valid() (bool, error) {
   return true, nil
 }
 
-func (db *DB) Migrate() error {
+func (db *Sql) Migrate() error {
   err := &DatabaseErrors{}
 
   conn, openErr := sql.Open(db.DriverName, db.DataSourceName)
@@ -134,7 +134,7 @@ func (db *DB) Migrate() error {
   return err
 }
 
-func (db *DB) SaveActivity(a *Activity) error {
+func (db *Sql) SaveActivity(a *Activity) error {
   err := &DatabaseErrors{}
 
   conn, openErr := sql.Open(db.DriverName, db.DataSourceName)
@@ -185,7 +185,7 @@ func (db *DB) SaveActivity(a *Activity) error {
   return err
 }
 
-func (db *DB) findActivities(predicate string, args ...interface{}) ([]*Activity, error) {
+func (db *Sql) findActivities(predicate string, args ...interface{}) ([]*Activity, error) {
   var activities []*Activity = nil
   err := &DatabaseErrors{}
 
@@ -229,7 +229,7 @@ func (db *DB) findActivities(predicate string, args ...interface{}) ([]*Activity
   return activities, err
 }
 
-func (db *DB) FindActivity(id int64) (*Activity, error) {
+func (db *Sql) FindActivity(id int64) (*Activity, error) {
   activities, findErr := db.findActivities("WHERE id = ?", id)
   if findErr != nil {
     return nil, findErr
@@ -240,17 +240,17 @@ func (db *DB) FindActivity(id int64) (*Activity, error) {
   return activities[0], nil
 }
 
-func (db *DB) FindAllActivities() (activities []*Activity, err error) {
+func (db *Sql) FindAllActivities() (activities []*Activity, err error) {
   activities, err = db.findActivities("")
   return
 }
 
-func (db *DB) FindRunningActivities() (activities []*Activity, err error) {
+func (db *Sql) FindRunningActivities() (activities []*Activity, err error) {
   activities, err = db.findActivities("WHERE end IS ?", &time.Time{})
   return
 }
 
-func (db *DB) FindActivitiesBetween(lower time.Time, upper time.Time) (activities []*Activity, err error) {
+func (db *Sql) FindActivitiesBetween(lower time.Time, upper time.Time) (activities []*Activity, err error) {
   activities, err = db.findActivities("WHERE start >= ? AND start < ?", lower, upper)
   return
 }

@@ -67,7 +67,7 @@ func main() {
       os.Exit(1)
     }
     dbFile := path.Join(currentUser.HomeDir, ".hourglass.db")
-    db := &hourglass.DB{"sqlite", dbFile, nil}
+    db := &hourglass.Sql{"sqlite", dbFile, nil}
     migrateErr := db.Migrate()
     if migrateErr != nil {
       fmt.Fprintln(os.Stderr, migrateErr)
