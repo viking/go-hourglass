@@ -245,7 +245,7 @@ func TestStopCommand_Help(t *testing.T) {
   }
 }
 
-var statusTests = []struct {
+var listTests = []struct {
   now time.Time
   activities []*Activity
   args []string
@@ -346,9 +346,9 @@ var statusTests = []struct {
   {when(2013, 4, 26, 22), nil, []string{"all"}, "there aren't any activities", false},
 }
 
-func TestStatusCommand_Run(t *testing.T) {
-  for i, config := range statusTests {
-    cmd := StatusCommand{}
+func TestListCommand_Run(t *testing.T) {
+  for i, config := range listTests {
+    cmd := ListCommand{}
     db := &fakeDb{}
     c := fakeClock{config.now}
 

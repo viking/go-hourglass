@@ -13,7 +13,7 @@ import (
 const (
   StartHelp = "Usage: %s start <name> [project] [ [tag1, tag2, ...] ]\n\nStart a new activity"
   StopHelp = "Usage: %s stop\n\nStop all activities"
-  StatusHelp = "Usage: %s status [all|week]\n\nShow activity status"
+  ListHelp = "Usage: %s list [all|week]\n\nList activities"
 )
 
 /* syntax error */
@@ -157,10 +157,10 @@ func (pdl *projectDurationList) String() (str string) {
   return
 }
 
-/* status */
-type StatusCommand struct{}
+/* list */
+type ListCommand struct{}
 
-func (StatusCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
+func (ListCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
 
   if len(args) == 0 {
     now := c.Now()
@@ -268,6 +268,6 @@ func (StatusCommand) Run(c Clock, db Database, args ...string) (output string, e
   return
 }
 
-func (StatusCommand) Help() string {
-  return StatusHelp
+func (ListCommand) Help() string {
+  return ListHelp
 }

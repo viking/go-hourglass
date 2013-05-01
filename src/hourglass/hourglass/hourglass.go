@@ -21,9 +21,9 @@ Usage:
 
 Commands:
 
-    status      Show any running activities
-    start       Start an activity
-    stop        Stop an activity
+    list   List activities
+    start  Start an activity
+    stop   Stop an activity
 
 Use "%s help [command]" for more information about a command.
 `
@@ -47,8 +47,8 @@ func main() {
 
   var cmd commands.Command
   switch commandName {
-  case "status":
-    cmd = commands.StatusCommand{}
+  case "list":
+    cmd = commands.ListCommand{}
   case "start":
     cmd = commands.StartCommand{}
   case "stop":
