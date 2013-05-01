@@ -25,6 +25,7 @@ func (e *DatabaseErrors) IsEmpty() bool {
 /* main interface */
 type Database interface {
   Valid() (bool, error)
+  Version() (int, error)
   Migrate() error
   SaveActivity(*Activity) error
   FindActivity(id int64) (*Activity, error)

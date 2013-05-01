@@ -49,6 +49,18 @@ func sqlTestRun(f func (db *Sql), t *testing.T) {
   os.Remove(dbFile.Name())
 }
 
+func TestSql_Version(t *testing.T) {
+  f := func (db *Sql) {
+    version, err := db.Version()
+    if err != nil {
+      t.Error(err)
+    } else if version != SqlVersion {
+      t.Errorf("expected version to be %d, but was %d", SqlVersion, version)
+    }
+  }
+  sqlTestRun(f, t)
+}
+
 func TestSql_SaveActivity(t *testing.T) {
   f := func (db *Sql) {
     activity := &Activity{Name: "foo", Project: "bar"}

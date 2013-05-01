@@ -56,6 +56,19 @@ func (db *Sql) Valid() (bool, error) {
   return true, nil
 }
 
+func (db *Sql) Version() (version int, err error) {
+  var conn *sql.DB
+
+  conn, err = sql.Open(db.DriverName, db.DataSourceName)
+  if err != nil {
+    return
+  }
+
+  versionRow := db.queryRow(conn, "SELECT version FROM schema_info")
+  versionRow.Scan(&version)
+  return
+}
+
 func (db *Sql) Migrate() error {
   err := &DatabaseErrors{}
 

@@ -25,6 +25,9 @@ type fakeDb struct {
 func (db *fakeDb) Valid() (bool, error) {
   return true, nil
 }
+func (db *fakeDb) Version() (int, error) {
+  return 1, nil
+}
 func (db *fakeDb) Migrate() error {
   return nil
 }
