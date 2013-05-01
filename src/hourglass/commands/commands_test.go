@@ -286,6 +286,46 @@ var statusTests = []struct {
   /* output when there are no activities */
   {time.Now(), nil, nil, "there have been no activities today", false},
 
+  /* week argument */
+  {
+    when(2013, 4, 27, 22),
+    []*Activity{
+      &Activity{Name: "sat", Start: when(2013, 4, 19, 14), End: when(2013, 4, 19, 15)},
+      &Activity{Name: "sun", Start: when(2013, 4, 21, 14), End: when(2013, 4, 21, 15)},
+      &Activity{Name: "mon", Start: when(2013, 4, 22, 14), End: when(2013, 4, 22, 15)},
+      &Activity{Name: "wed", Start: when(2013, 4, 24, 14), End: when(2013, 4, 24, 15)},
+      &Activity{Name: "thu", Start: when(2013, 4, 25, 14), End: when(2013, 4, 25, 15)},
+      &Activity{Name: "fri", Start: when(2013, 4, 26, 14), End: when(2013, 4, 26, 15)},
+      &Activity{Name: "sat", Start: when(2013, 4, 27, 21)},
+    },
+    []string{"week"},
+    "=== Sunday (2013-04-21) ===\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+    "| 2\t| sun\t| \t| \t| stopped\t| 01h00m\n" +
+    "unsorted: 01h00m\n\n" +
+    "=== Monday (2013-04-22) ===\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+    "| 3\t| mon\t| \t| \t| stopped\t| 01h00m\n" +
+    "unsorted: 01h00m\n\n" +
+    "=== Wednesday (2013-04-24) ===\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+    "| 4\t| wed\t| \t| \t| stopped\t| 01h00m\n" +
+    "unsorted: 01h00m\n\n" +
+    "=== Thursday (2013-04-25) ===\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+    "| 5\t| thu\t| \t| \t| stopped\t| 01h00m\n" +
+    "unsorted: 01h00m\n\n" +
+    "=== Friday (2013-04-26) ===\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+    "| 6\t| fri\t| \t| \t| stopped\t| 01h00m\n" +
+    "unsorted: 01h00m\n\n" +
+    "=== Saturday (2013-04-27) ===\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
+    "| 7\t| sat\t| \t| \t| running\t| 01h00m\n" +
+    "unsorted: 01h00m",
+    false,
+  },
+
   /* all argument */
   {
     when(2013, 4, 26, 22),
@@ -318,7 +358,7 @@ func TestStatusCommand_Run(t *testing.T) {
 
     output, err := cmd.Run(c, db, config.args...)
     if output != config.output {
-      t.Errorf("test %d: expected output to be '%s', but was '%s'", i, config.output, output)
+      t.Errorf("test %d: expected output to be:\n%s\nbut was:\n%s\n", i, config.output, output)
     }
 
     if err != nil {
