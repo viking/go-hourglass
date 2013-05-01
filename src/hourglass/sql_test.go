@@ -10,7 +10,7 @@ import (
   sqlite "github.com/mattn/go-sqlite3"
 )
 
-func DbTestRun(f func (db *Sql), t *testing.T) {
+func sqlTestRun(f func (db *Sql), t *testing.T) {
   /* Create temporary file */
   dbFile, tempErr := ioutil.TempFile("", "hourglass")
   if tempErr != nil {
@@ -49,7 +49,7 @@ func DbTestRun(f func (db *Sql), t *testing.T) {
   os.Remove(dbFile.Name())
 }
 
-func TestDB_SaveActivity(t *testing.T) {
+func TestSql_SaveActivity(t *testing.T) {
   f := func (db *Sql) {
     activity := &Activity{Name: "foo", Project: "bar"}
     activity.End = time.Now()
@@ -80,10 +80,10 @@ func TestDB_SaveActivity(t *testing.T) {
       t.Error("expected:\n", activity, "\ngot:\n", foundActivity)
     }
   }
-  DbTestRun(f, t)
+  sqlTestRun(f, t)
 }
 
-func TestDB_SaveActivity_WithExistingActivity(t *testing.T) {
+func TestSql_SaveActivity_WithExistingActivity(t *testing.T) {
   f := func (db *Sql) {
     activity := &Activity{Name: "foo", Project: "bar"}
     activity.End = time.Now()
@@ -117,11 +117,11 @@ func TestDB_SaveActivity_WithExistingActivity(t *testing.T) {
       t.Error("expected:\n", activity, "\ngot:\n", foundActivity)
     }
   }
-  DbTestRun(f, t)
+  sqlTestRun(f, t)
 }
 
 
-func TestDB_FindActivity_WithNonExistantId(t *testing.T) {
+func TestSql_FindActivity_WithNonExistantId(t *testing.T) {
   f := func(db *Sql) {
     _, findErr := db.FindActivity(1234)
     if findErr != ErrNotFound {
@@ -129,10 +129,10 @@ func TestDB_FindActivity_WithNonExistantId(t *testing.T) {
       return
     }
   }
-  DbTestRun(f, t)
+  sqlTestRun(f, t)
 }
 
-func TestDB_FindAllActivities(t *testing.T) {
+func TestSql_FindAllActivities(t *testing.T) {
   f := func (db *Sql) {
     activity := &Activity{Name: "foo", Project: "bar"}
     activity.End = time.Now()
@@ -159,10 +159,10 @@ func TestDB_FindAllActivities(t *testing.T) {
       t.Error("expected:\n", activity, "\ngot:\n", activities[0])
     }
   }
-  DbTestRun(f, t)
+  sqlTestRun(f, t)
 }
 
-func TestDB_FindRunningActivities(t *testing.T) {
+func TestSql_FindRunningActivities(t *testing.T) {
   f := func (db *Sql) {
     activity_1 := &Activity{Name: "foo", Project: "bar"}
     activity_1.End = time.Now()
@@ -195,10 +195,10 @@ func TestDB_FindRunningActivities(t *testing.T) {
       t.Error("expected:\n", activity_2, "\ngot:\n", activities[0])
     }
   }
-  DbTestRun(f, t)
+  sqlTestRun(f, t)
 }
 
-func TestDB_FindActivitiesBetween(t *testing.T) {
+func TestSql_FindActivitiesBetween(t *testing.T) {
   f := func (db *Sql) {
     now := time.Now()
 
@@ -234,5 +234,5 @@ func TestDB_FindActivitiesBetween(t *testing.T) {
       t.Error("expected:\n", activity_1, "\ngot:\n", activities[0])
     }
   }
-  DbTestRun(f, t)
+  sqlTestRun(f, t)
 }
