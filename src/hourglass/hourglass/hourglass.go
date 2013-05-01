@@ -10,6 +10,7 @@ import (
   sqlite "github.com/mattn/go-sqlite3"
   "hourglass/database"
   "hourglass/commands"
+  "hourglass/clock"
 )
 
 const Usage = `hourglass is a tool for time tracking.
@@ -75,7 +76,8 @@ func main() {
       os.Exit(1)
     }
 
-    output, err := cmd.Run(db, os.Args[2:]...)
+    c := clock.RealClock{}
+    output, err := cmd.Run(c, db, os.Args[2:]...)
     switch err.(type) {
     case nil:
       writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)

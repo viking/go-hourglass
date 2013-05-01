@@ -21,7 +21,7 @@ func (s SyntaxErr) Error() string {
 }
 
 type Command interface {
-  Run(db Database, args ...string) (string, error)
+  Run(c Clock, db Database, args ...string) (string, error)
   Help() string
 }
 
