@@ -74,7 +74,7 @@ func main() {
       os.Exit(1)
     }
 
-    c := hourglass.RealClock{}
+    c := hourglass.DefaultClock{}
     output, err := cmd.Run(c, db, os.Args[2:]...)
     switch err.(type) {
     case nil:

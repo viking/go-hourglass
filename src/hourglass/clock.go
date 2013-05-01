@@ -8,16 +8,16 @@ type Clock interface {
   Since(time.Time) time.Duration
 }
 
-type RealClock struct {}
+type DefaultClock struct {}
 
-func (RealClock) Now() time.Time {
+func (DefaultClock) Now() time.Time {
   return time.Now()
 }
 
-func (RealClock) Local(t time.Time) time.Time {
+func (DefaultClock) Local(t time.Time) time.Time {
   return t.Local()
 }
 
-func (RealClock) Since(t time.Time) time.Duration {
+func (DefaultClock) Since(t time.Time) time.Duration {
   return time.Since(t)
 }

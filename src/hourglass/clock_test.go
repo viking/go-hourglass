@@ -5,8 +5,8 @@ import (
   "time"
 )
 
-func TestRealClock_Now(t *testing.T) {
-  clock := RealClock{}
+func TestDefaultClock_Now(t *testing.T) {
+  clock := DefaultClock{}
   for i := 0; i < 1000; i++ {
     duration := time.Since(clock.Now())
     if duration > time.Millisecond {
@@ -15,8 +15,8 @@ func TestRealClock_Now(t *testing.T) {
   }
 }
 
-func TestRealClock_Since(t *testing.T) {
-  clock := RealClock{}
+func TestDefaultClock_Since(t *testing.T) {
+  clock := DefaultClock{}
   when := time.Date(2013, time.April, 29, 12, 0, 0, 0, time.Local)
   for i := 0; i < 1000; i++ {
     duration := clock.Since(when)
@@ -27,8 +27,8 @@ func TestRealClock_Since(t *testing.T) {
   }
 }
 
-func TestRealClock_Local(t *testing.T) {
-  clock := RealClock{}
+func TestDefaultClock_Local(t *testing.T) {
+  clock := DefaultClock{}
   when := time.Now().UTC()
   if when.Local() != clock.Local(when) {
     t.Error("expected '%s', got '%s'", when.Local(), clock.Local(when))
