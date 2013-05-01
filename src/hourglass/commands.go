@@ -1,12 +1,9 @@
-package commands
+package hourglass
 
 import (
   "time"
   "fmt"
   "sort"
-  . "hourglass/database"
-  . "hourglass/activity"
-  . "hourglass/clock"
 )
 
 /* help messages */

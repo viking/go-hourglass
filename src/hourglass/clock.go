@@ -1,4 +1,4 @@
-package clock
+package hourglass
 
 import "time"
 

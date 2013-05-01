@@ -1,10 +1,9 @@
-package activity
+package hourglass
 
 import (
   "time"
   "strings"
   "fmt"
-  . "hourglass/clock"
 )
 
 type Activity struct {

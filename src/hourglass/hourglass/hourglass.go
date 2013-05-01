@@ -8,9 +8,7 @@ import (
   "database/sql"
   "text/tabwriter"
   sqlite "github.com/mattn/go-sqlite3"
-  "hourglass/database"
-  "hourglass/commands"
-  "hourglass/clock"
+  "hourglass"
 )
 
 const Usage = `hourglass is a tool for time tracking.
@@ -45,14 +43,14 @@ func main() {
     commandName = os.Args[2]
   }
 
-  var cmd commands.Command
+  var cmd hourglass.Command
   switch commandName {
   case "list":
-    cmd = commands.ListCommand{}
+    cmd = hourglass.ListCommand{}
   case "start":
-    cmd = commands.StartCommand{}
+    cmd = hourglass.StartCommand{}
   case "stop":
-    cmd = commands.StopCommand{}
+    cmd = hourglass.StopCommand{}
   }
 
   if help {
@@ -69,14 +67,14 @@ func main() {
       os.Exit(1)
     }
     dbFile := path.Join(currentUser.HomeDir, ".hourglass.db")
-    db := &database.DB{"sqlite", dbFile, nil}
+    db := &hourglass.DB{"sqlite", dbFile, nil}
     migrateErr := db.Migrate()
     if migrateErr != nil {
       fmt.Fprintln(os.Stderr, migrateErr)
       os.Exit(1)
     }
 
-    c := clock.RealClock{}
+    c := hourglass.RealClock{}
     output, err := cmd.Run(c, db, os.Args[2:]...)
     switch err.(type) {
     case nil:
@@ -84,7 +82,7 @@ func main() {
       fmt.Fprintln(writer, output)
       writer.Flush()
       os.Exit(0)
-    case commands.SyntaxErr:
+    case hourglass.SyntaxErr:
       fmt.Fprintln(os.Stderr, err)
       fmt.Fprintf(os.Stderr, cmd.Help(), os.Args[0])
       fmt.Fprintln(os.Stderr)

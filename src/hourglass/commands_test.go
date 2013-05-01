@@ -1,11 +1,9 @@
-package commands
+package hourglass
 
 import (
   "testing"
   "time"
   "sort"
-  . "hourglass/activity"
-  . "hourglass/database"
 )
 
 /* activity sorting */
@@ -80,16 +78,16 @@ func (db *fakeDb) FindActivitiesBetween(lower time.Time, upper time.Time) ([]*Ac
 }
 
 /* fake clock */
-type fakeClock struct {
+type fakeCmdClock struct {
   now time.Time
 }
-func (c fakeClock) Now() time.Time {
+func (c fakeCmdClock) Now() time.Time {
   return c.now
 }
-func (c fakeClock) Local(t time.Time) time.Time {
+func (c fakeCmdClock) Local(t time.Time) time.Time {
   return t.Local()
 }
-func (c fakeClock) Since(t time.Time) time.Duration {
+func (c fakeCmdClock) Since(t time.Time) time.Duration {
   return c.now.Sub(t)
 }
 
@@ -118,7 +116,7 @@ func TestStartCommand_Run(t *testing.T) {
   for i, config := range startTests {
     cmd := StartCommand{}
     db := &fakeDb{}
-    c := fakeClock{config.now}
+    c := fakeCmdClock{config.now}
 
     var args []string
     if config.name != "" {
@@ -203,7 +201,7 @@ func TestStopCommand_Run(t *testing.T) {
   for i, config := range stopTests {
     cmd := StopCommand{}
     db := &fakeDb{}
-    c := fakeClock{config.now}
+    c := fakeCmdClock{config.now}
 
     now := c.Now()
     for _, duration := range config.startSince {
@@ -350,7 +348,7 @@ func TestListCommand_Run(t *testing.T) {
   for i, config := range listTests {
     cmd := ListCommand{}
     db := &fakeDb{}
-    c := fakeClock{config.now}
+    c := fakeCmdClock{config.now}
 
     for _, activity := range config.activities {
       db.SaveActivity(activity)
