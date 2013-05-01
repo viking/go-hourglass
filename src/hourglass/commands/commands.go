@@ -3,23 +3,84 @@ package commands
 import (
   "time"
   "fmt"
+  "sort"
   . "hourglass/database"
   . "hourglass/activity"
   . "hourglass/clock"
 )
 
+/* help messages */
 const (
   StartHelp = "Usage: %s start <name> [project] [ [tag1, tag2, ...] ]\n\nStart a new activity"
   StopHelp = "Usage: %s stop\n\nStop all activities"
   StatusHelp = "Usage: %s status [all]\n\nShow activity status"
 )
 
+/* syntax error */
 type SyntaxErr string
-
 func (s SyntaxErr) Error() string {
   return fmt.Sprint("syntax error: ", string(s))
 }
 
+/* project duration, needed for sorting */
+type projectDuration struct {
+  name string
+  duration Duration
+}
+type projectDurationList struct {
+  slice []*projectDuration
+}
+func newProjectDurationList() *projectDurationList {
+  pdl := &projectDurationList{}
+  pdl.slice = make([]*projectDuration, 0, 10)
+  return pdl
+}
+func (pdl *projectDurationList) Len() int {
+  return len(pdl.slice)
+}
+func (pdl *projectDurationList) Less(i, j int) bool {
+  if pdl.slice[i].name == "" {
+    return false
+  } else if pdl.slice[j].name == "" {
+    return true
+  }
+  return pdl.slice[i].name < pdl.slice[j].name
+}
+func (pdl *projectDurationList) Swap(i, j int) {
+  pdl.slice[i], pdl.slice[j] = pdl.slice[j], pdl.slice[i]
+}
+func (pdl *projectDurationList) add(name string, duration Duration) {
+  var pd *projectDuration
+  for _, val := range pdl.slice {
+    if val.name == name {
+      pd = val
+      break
+    }
+  }
+  if pd == nil {
+    pdl.slice = append(pdl.slice, &projectDuration{name, duration})
+    sort.Sort(pdl)
+  } else {
+    pd.duration += duration
+  }
+}
+func (pdl *projectDurationList) String() (str string) {
+  for i, pd := range pdl.slice {
+    if i > 0 {
+      str += ", "
+    }
+    var name string
+    if pd.name == "" {
+      name = "unsorted"
+    } else {
+      name = pd.name
+    }
+    str += fmt.Sprint(name, ": ", pd.duration)
+  }
+  return
+}
+
+/* command interface */
 type Command interface {
   Run(c Clock, db Database, args ...string) (string, error)
   Help() string
@@ -115,15 +176,19 @@ func (StatusCommand) Run(c Clock, db Database, args ...string) (output string, e
       return
     }
 
+    totals := newProjectDurationList()
     if len(activities) == 0 {
       output = "there have been no activities today"
     } else {
       output = fmt.Sprint("| id\t| name\t| project\t| tags\t| state\t| duration")
       for _, activity := range(activities) {
+        duration := activity.Duration(c)
         output += fmt.Sprintf("\n| %d\t| %s\t| %s\t| %s\t| %s\t| %s",
           activity.Id, activity.Name, activity.Project, activity.TagList(),
-          activity.Status(), activity.Duration(c))
+          activity.Status(), duration)
+        totals.add(activity.Project, duration)
       }
+      output += fmt.Sprint("\n", totals)
     }
   } else if args[0] == "all" {
     var activities []*Activity

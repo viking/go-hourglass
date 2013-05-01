@@ -262,7 +262,8 @@ var statusTests = []struct {
     nil,
     "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
       "| 1\t| foo\t| \t| one, two\t| stopped\t| 01h00m\n" +
-      "| 2\t| bar\t| baz\t| \t| running\t| 01h00m",
+      "| 2\t| bar\t| baz\t| \t| running\t| 01h00m\n" +
+      "baz: 01h00m, unsorted: 01h00m",
     false,
   },
 
@@ -271,11 +272,14 @@ var statusTests = []struct {
     when(2013, 4, 26, 22),
     []*Activity{
       &Activity{Name: "foo", Start: when(2013, 4, 25, 21), End: when(2013, 4, 25, 22)},
+      &Activity{Name: "baz", Project: "proj", Start: when(2013, 4, 26, 14), End: when(2013, 4, 26, 15)},
       &Activity{Name: "bar", Start: when(2013, 4, 26, 21)},
     },
     nil,
     "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-      "| 2\t| bar\t| \t| \t| running\t| 01h00m",
+      "| 2\t| baz\t| proj\t| \t| stopped\t| 01h00m\n" +
+      "| 3\t| bar\t| \t| \t| running\t| 01h00m\n" +
+      "proj: 01h00m, unsorted: 01h00m",
     false,
   },
 
