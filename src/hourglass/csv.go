@@ -4,6 +4,7 @@ import (
   "encoding/csv"
   "os"
   "io"
+  "io/ioutil"
   "bufio"
   "regexp"
   "strconv"
@@ -11,6 +12,7 @@ import (
   "errors"
   "fmt"
   "time"
+  "bytes"
 )
 
 const CsvVersion = 1
@@ -30,8 +32,8 @@ func NewCsv(filename string) (db *Csv, err error) {
   return
 }
 
-func (db *Csv) seekPastFrontMatter(f *os.File) (err error) {
-  _, err = f.Seek(45, 0)
+func (db *Csv) seekPastFrontMatter(f *os.File) (pos int64, err error) {
+  pos, err = f.Seek(45, 0)
   return
 }
 
@@ -97,7 +99,7 @@ func (db *Csv) writeFrontMatter(version int, lastId int64) (err error) {
   return
 }
 
-func (db *Csv) writeRecord(record []string) (err error) {
+func (db *Csv) appendRecord(record []string) (err error) {
   db.Mutex.Lock()
   defer db.Mutex.Unlock()
 
@@ -116,6 +118,46 @@ func (db *Csv) writeRecord(record []string) (err error) {
   return
 }
 
+func (db *Csv) writeBytes(pos int64, data []byte) (err error) {
+  db.Mutex.Lock()
+  defer db.Mutex.Unlock()
+
+  var f *os.File
+  f, err = os.OpenFile(db.Filename, os.O_WRONLY, 0644)
+  if err != nil {
+    return
+  }
+  defer f.Close()
+
+  _, err = f.Seek(pos, 0)
+  if err != nil {
+    return
+  }
+
+  _, err = f.Write(data)
+  return
+}
+
+func (db *Csv) readAll(pos int64) (data []byte, err error) {
+  db.Mutex.RLock()
+  defer db.Mutex.RUnlock()
+
+  var f *os.File
+  f, err = os.Open(db.Filename)
+  if err != nil {
+    return
+  }
+  defer f.Close()
+
+  _, err = f.Seek(pos, 0)
+  if err != nil {
+    return
+  }
+
+  data, err = ioutil.ReadAll(f)
+  return
+}
+
 func (db *Csv) Version() (version int, err error) {
   return db.version, nil
 }
@@ -126,7 +168,7 @@ func (db *Csv) Migrate() (err error) {
     case 0:
       err = db.writeFrontMatter(1, 1)
       if err == nil {
-        err = db.writeRecord([]string{"id", "name", "project", "tags",
+        err = db.appendRecord([]string{"id", "name", "project", "tags",
           "start", "end"})
       }
     }
@@ -138,29 +180,87 @@ func (db *Csv) Migrate() (err error) {
   return
 }
 
-func (db *Csv) SaveActivity(activity *Activity) (err error) {
-  /* FIXME: need mutex for id */
-  id := db.lastId + 1
-  record := make([]string, 6)
-  record[0] = strconv.FormatInt(id, 10)
+func (db *Csv) activityToRecord(activity *Activity) (record []string) {
+  record = make([]string, 6)
+  record[0] = strconv.FormatInt(activity.Id, 10)
   record[1] = activity.Name
   record[2] = activity.Project
   record[3] = activity.TagList()
   record[4] = activity.Start.Format(time.RFC3339Nano)
   record[5] = activity.End.Format(time.RFC3339Nano)
+  return
+}
 
-  err = db.writeRecord(record)
+func (db *Csv) createActivity(activity *Activity) (err error) {
+  /* FIXME: need mutex for id */
+  activity.Id = db.lastId + 1
+  record := db.activityToRecord(activity)
+
+  err = db.appendRecord(record)
   if err != nil {
+    activity.Id = 0
     return
   }
-  activity.Id = id
-  db.lastId = id
+  db.lastId = activity.Id
 
   err = db.writeFrontMatter(db.version, db.lastId)
   return
 }
 
-func (db *Csv) FindActivity(id int64) (activity *Activity, err error) {
+func (db *Csv) updateActivity(activity *Activity) (err error) {
+  var pos int64
+  var line []byte
+  pos, line, err = db.findActivityLine(activity.Id)
+  if err != nil {
+    return
+  }
+
+  buf := new(bytes.Buffer)
+  w := csv.NewWriter(buf)
+
+  record := db.activityToRecord(activity)
+  err = w.Write(record)
+  if err != nil {
+    return
+  }
+  w.Flush()
+
+  var newLine []byte
+  newLine, err = buf.ReadBytes('\n')
+  if err != nil {
+    return
+  }
+
+  /* If the resulting record is the same length, just overwrite it */
+  if len(line) == len(newLine) {
+    err = db.writeBytes(pos, newLine)
+  } else {
+    /* Save the data past the line, write the line, then put the data back */
+    var data []byte
+    data, err = db.readAll(pos + int64(len(line)))
+    if err != nil {
+      return
+    }
+    err = db.writeBytes(pos, newLine)
+    if err != nil {
+      return
+    }
+    err = db.writeBytes(pos + int64(len(newLine)), data)
+  }
+
+  return
+}
+
+func (db *Csv) SaveActivity(activity *Activity) (err error) {
+  if activity.Id > 0 {
+    err = db.updateActivity(activity)
+  } else {
+    err = db.createActivity(activity)
+  }
+  return
+}
+
+func (db *Csv) findActivityLine(id int64) (pos int64, line []byte, err error) {
   db.Mutex.RLock()
   defer db.Mutex.RUnlock()
 
@@ -171,48 +271,81 @@ func (db *Csv) FindActivity(id int64) (activity *Activity, err error) {
   }
   defer f.Close()
 
-  err = db.seekPastFrontMatter(f)
+  pos, err = db.seekPastFrontMatter(f)
   if err != nil {
     return
   }
 
-  r := csv.NewReader(f)
+  r := bufio.NewReader(f)
 
-  var record []string
-  n := 0
-  for {
-    record, err = r.Read()
-    if err != nil {
-      if err == io.EOF {
-        err = nil
-      }
-      break
-    }
-    fmt.Println(record)
-    if n > 0 {
-      /* Ignore first row */
-      var recordId int64
-      recordId, err = strconv.ParseInt(record[0], 10, 64)
+  lineNum := 0
+  for  {
+    if lineNum == 0 {
+      line, err = r.ReadBytes('\n')
       if err != nil {
-        return
-      }
-      fmt.Println(recordId, id)
-      if recordId == id {
-        activity = &Activity{Id: recordId, Name: record[1], Project: record[2]}
-        activity.SetTagList(record[3])
-
-        activity.Start, err = time.Parse(time.RFC3339Nano, record[4])
-        if err != nil {
-          return
-        }
-        activity.End, err = time.Parse(time.RFC3339Nano, record[5])
-        if err != nil {
-          return
-        }
         break
       }
+      pos += int64(len(line))
+    } else {
+      line, err = r.ReadBytes(',')
+      if err != nil {
+        break
+      }
+
+      var recordId int64
+      recordId, err = strconv.ParseInt(string(line[:len(line)-1]), 10, 64)
+      if err != nil {
+        /* TODO: be more fault tolerant */
+        break
+      }
+
+      var rest []byte
+      rest, err = r.ReadBytes('\n')
+      if err != nil {
+        /* TODO: be more fault tolerant */
+        break
+      }
+
+      if recordId == id {
+        line = append(line, rest...)
+        break
+      }
+      pos += int64(len(line)) + int64(len(rest))
     }
-    n += 1
+    lineNum += 1
+  }
+
+  return
+}
+
+func (db *Csv) FindActivity(id int64) (activity *Activity, err error) {
+  var line []byte
+
+  _, line, err = db.findActivityLine(id)
+  if err == io.EOF {
+    err = ErrNotFound
+    return
+  }
+
+  buf := bytes.NewBuffer(line)
+  r := csv.NewReader(buf)
+
+  var record []string
+  record, err = r.Read()
+  if err != nil {
+    return
+  }
+
+  activity = &Activity{Id: id, Name: record[1], Project: record[2]}
+  activity.SetTagList(record[3])
+
+  activity.Start, err = time.Parse(time.RFC3339Nano, record[4])
+  if err != nil {
+    return
+  }
+  activity.End, err = time.Parse(time.RFC3339Nano, record[5])
+  if err != nil {
+    return
   }
 
   return
