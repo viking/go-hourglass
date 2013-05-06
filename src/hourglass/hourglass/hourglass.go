@@ -51,6 +51,10 @@ func main() {
     cmd = hourglass.StartCommand{}
   case "stop":
     cmd = hourglass.StopCommand{}
+  default:
+    fmt.Fprintln(os.Stderr, "Invalid command:", commandName)
+    fmt.Fprintf(os.Stderr, Usage, os.Args[0], os.Args[0])
+    os.Exit(1)
   }
 
   if help {
