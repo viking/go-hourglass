@@ -360,7 +360,7 @@ func (db *Csv) FindActivity(id int64) (activity *Activity, err error) {
   return
 }
 
-func (db *Csv) FindAllActivities() (activities []*Activity, err error) {
+func (db *Csv) findActivities(filter func(*Activity) bool) (activities []*Activity, err error) {
   db.Mutex.RLock()
   defer db.Mutex.RUnlock()
 
@@ -384,12 +384,30 @@ func (db *Csv) FindAllActivities() (activities []*Activity, err error) {
     return
   }
 
-  activities = make([]*Activity, len(records))
-  for i, record := range records {
-    activities[i], err = db.recordToActivity(record)
+  activities = make([]*Activity, 0, len(records))
+  for _, record := range records {
+    var activity *Activity
+    activity, err = db.recordToActivity(record)
     if err != nil {
       return
     }
+    if filter == nil || filter(activity) {
+      activities = append(activities, activity)
+    }
   }
+  return
+}
+
+func (db *Csv) FindAllActivities() (activities []*Activity, err error) {
+  activities, err = db.findActivities(nil)
+  return
+}
+
+func runningFilter(a *Activity) bool {
+  return a.IsRunning()
+}
+
+func (db *Csv) FindRunningActivities() (activities []*Activity, err error) {
+  activities, err = db.findActivities(runningFilter)
   return
 }
