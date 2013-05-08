@@ -221,3 +221,42 @@ func TestCsv_FindRunningActivities(t *testing.T) {
   }
   csvTestRun(f, t)
 }
+
+func TestCsv_FindActivitiesBetween(t *testing.T) {
+  f := func (db *Csv) {
+    now := time.Now()
+
+    activity_1 := &Activity{Name: "foo", Project: "bar"}
+    activity_1.End = now.Add(-(time.Hour * 24))
+    activity_1.Start = activity_1.End.Add(-time.Hour)
+
+    activity_2 := &Activity{Name: "baz", Start: now}
+
+    err := db.SaveActivity(activity_1)
+    if err != nil {
+      t.Error(err)
+    }
+    err = db.SaveActivity(activity_2)
+    if err != nil {
+      t.Error(err)
+    }
+
+    var activities []*Activity
+    activities, err = db.FindActivitiesBetween(activity_1.Start,
+      activity_1.Start.Add(time.Hour))
+    if err != nil {
+      t.Error(err)
+      return
+    }
+
+    if len(activities) != 1 {
+      t.Error("expected to find 1 activity, but found", len(activities))
+      return
+    }
+
+    if !activity_1.Equal(activities[0]) {
+      t.Error("expected:\n", activity_1, "\ngot:\n", activities[0])
+    }
+  }
+  csvTestRun(f, t)
+}

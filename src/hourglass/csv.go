@@ -403,11 +403,16 @@ func (db *Csv) FindAllActivities() (activities []*Activity, err error) {
   return
 }
 
-func runningFilter(a *Activity) bool {
-  return a.IsRunning()
+func (db *Csv) FindRunningActivities() (activities []*Activity, err error) {
+  filter := func(a *Activity) bool { return a.IsRunning() }
+  activities, err = db.findActivities(filter)
+  return
 }
 
-func (db *Csv) FindRunningActivities() (activities []*Activity, err error) {
-  activities, err = db.findActivities(runningFilter)
+func (db *Csv) FindActivitiesBetween(lower time.Time, upper time.Time) (activities []*Activity, err error) {
+  filter := func(a *Activity) bool {
+    return (a.Start.Equal(lower) || a.Start.After(lower)) && a.Start.Before(upper)
+  }
+  activities, err = db.findActivities(filter)
   return
 }
