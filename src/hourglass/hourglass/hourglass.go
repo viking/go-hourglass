@@ -1,6 +1,7 @@
 package main
 
 import (
+  "flag"
   "fmt"
   "os"
   "os/user"
@@ -15,32 +16,50 @@ const Usage = `hourglass is a tool for time tracking.
 
 Usage:
 
-    %s command [arguments]
+	%s [global-opts] command [arguments]
+
+Global options:
+	-sql	Use SQLite backend (default)
+	-csv	Use CSV backend
 
 Commands:
 
-    list   List activities
-    start  Start an activity
-    stop   Stop an activity
+	list	List activities
+	start	Start an activity
+	stop	Stop an activity
 
 Use "%s help [command]" for more information about a command.
 `
 
+func printUsage() {
+  fmt.Fprintf(os.Stderr, Usage, os.Args[0], os.Args[0])
+}
+
 func main() {
-  if len(os.Args) < 2 {
-    fmt.Fprintf(os.Stderr, Usage, os.Args[0], os.Args[0])
+  sqlFlag := flag.Bool("sql", false, "Use SQLite backend")
+  csvFlag := flag.Bool("csv", false, "Use CSV backend")
+  flag.Parse()
+
+  if len(flag.Args()) < 1 {
+    printUsage()
+    os.Exit(1)
+  }
+
+  if *sqlFlag && *csvFlag {
+    fmt.Fprint(os.Stderr, "Error: -sql and -csv are mutually exclusive options\n")
+    printUsage()
     os.Exit(1)
   }
 
   help := false
-  commandName := os.Args[1]
+  commandName := flag.Arg(0)
   if commandName == "help" {
-    if len(os.Args) != 3 {
+    if len(flag.Args()) != 2 {
       fmt.Fprint(os.Stderr, "The help command requires one argument.\n")
       os.Exit(1)
     }
     help = true
-    commandName = os.Args[2]
+    commandName = flag.Arg(1)
   }
 
   var cmd hourglass.Command
@@ -53,7 +72,7 @@ func main() {
     cmd = hourglass.StopCommand{}
   default:
     fmt.Fprintln(os.Stderr, "Invalid command:", commandName)
-    fmt.Fprintf(os.Stderr, Usage, os.Args[0], os.Args[0])
+    printUsage()
     os.Exit(1)
   }
 
@@ -63,15 +82,28 @@ func main() {
     os.Exit(0)
   } else {
     /* Setup database */
-    sql.Register("sqlite", &sqlite.SQLiteDriver{})
-
     currentUser, userErr := user.Current()
     if userErr != nil {
       fmt.Fprintln(os.Stderr, userErr)
       os.Exit(1)
     }
-    dbFile := path.Join(currentUser.HomeDir, ".hourglass.db")
-    db := &hourglass.Sql{"sqlite", dbFile, nil}
+
+    var db hourglass.Database
+    if !*csvFlag {
+      sql.Register("sqlite", &sqlite.SQLiteDriver{})
+      dbFile := path.Join(currentUser.HomeDir, ".hourglass.db")
+      db = &hourglass.Sql{"sqlite", dbFile, nil}
+    } else {
+      csvFile := path.Join(currentUser.HomeDir, ".hourglass.csv")
+
+      var csvErr error
+      db, csvErr = hourglass.NewCsv(csvFile)
+      if csvErr != nil {
+        fmt.Fprintln(os.Stderr, csvErr)
+        os.Exit(1)
+      }
+    }
+
     migrateErr := db.Migrate()
     if migrateErr != nil {
       fmt.Fprintln(os.Stderr, migrateErr)
@@ -79,7 +111,7 @@ func main() {
     }
 
     c := hourglass.DefaultClock{}
-    output, err := cmd.Run(c, db, os.Args[2:]...)
+    output, err := cmd.Run(c, db, flag.Args()[1:]...)
     switch err.(type) {
     case nil:
       writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)

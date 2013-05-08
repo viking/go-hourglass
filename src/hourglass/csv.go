@@ -22,6 +22,7 @@ var ErrBadFrontMatter = errors.New("invalid front matter")
 type Csv struct {
   Filename string
   Mutex sync.RWMutex
+  valid bool
   version int
   lastId int64
 }
@@ -29,7 +30,12 @@ type Csv struct {
 func NewCsv(filename string) (db *Csv, err error) {
   db = &Csv{Filename: filename}
   err = db.readFrontMatter()
+  db.valid = err == nil
   return
+}
+
+func (db *Csv) Valid() (bool, error) {
+  return db.valid, nil
 }
 
 func (db *Csv) seekToHeader(f *os.File) (pos int64, err error) {
@@ -54,7 +60,7 @@ func (db *Csv) readFrontMatter() (err error) {
   defer db.Mutex.RUnlock()
 
   var f *os.File
-  f, err = os.Open(db.Filename)
+  f, err = os.OpenFile(db.Filename, os.O_RDONLY | os.O_CREATE, 0644)
   if err != nil {
     return
   }
@@ -178,7 +184,7 @@ func (db *Csv) Migrate() (err error) {
   for db.version < CsvVersion {
     switch db.version {
     case 0:
-      err = db.writeFrontMatter(1, 1)
+      err = db.writeFrontMatter(1, 0)
       if err == nil {
         err = db.appendRecord([]string{"id", "name", "project", "tags",
           "start", "end"})
