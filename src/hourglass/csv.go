@@ -32,8 +32,20 @@ func NewCsv(filename string) (db *Csv, err error) {
   return
 }
 
-func (db *Csv) seekPastFrontMatter(f *os.File) (pos int64, err error) {
+func (db *Csv) seekToHeader(f *os.File) (pos int64, err error) {
+  /* Front matter is 45 bytes long */
   pos, err = f.Seek(45, 0)
+  return
+}
+
+func (db *Csv) seekToData(f *os.File) (pos int64, err error) {
+  /* Header is: id,name,project,tags,start,end */
+  pos, err = db.seekToHeader(f)
+  if err != nil {
+    return
+  }
+
+  pos, err = f.Seek(31, 1)
   return
 }
 
@@ -191,6 +203,25 @@ func (db *Csv) activityToRecord(activity *Activity) (record []string) {
   return
 }
 
+func (db *Csv) recordToActivity(record []string) (activity *Activity, err error) {
+  activity = new(Activity)
+  activity.Id, err = strconv.ParseInt(record[0], 10, 64)
+  if err != nil {
+    return
+  }
+
+  activity.Name = record[1]
+  activity.Project = record[2]
+  activity.SetTagList(record[3])
+
+  activity.Start, err = time.Parse(time.RFC3339Nano, record[4])
+  if err != nil {
+    return
+  }
+  activity.End, err = time.Parse(time.RFC3339Nano, record[5])
+  return
+}
+
 func (db *Csv) createActivity(activity *Activity) (err error) {
   /* FIXME: need mutex for id */
   activity.Id = db.lastId + 1
@@ -271,48 +302,38 @@ func (db *Csv) findActivityLine(id int64) (pos int64, line []byte, err error) {
   }
   defer f.Close()
 
-  pos, err = db.seekPastFrontMatter(f)
+  pos, err = db.seekToData(f)
   if err != nil {
     return
   }
 
   r := bufio.NewReader(f)
 
-  lineNum := 0
-  for  {
-    if lineNum == 0 {
-      line, err = r.ReadBytes('\n')
-      if err != nil {
-        break
-      }
-      pos += int64(len(line))
-    } else {
-      line, err = r.ReadBytes(',')
-      if err != nil {
-        break
-      }
-
-      var recordId int64
-      recordId, err = strconv.ParseInt(string(line[:len(line)-1]), 10, 64)
-      if err != nil {
-        /* TODO: be more fault tolerant */
-        break
-      }
-
-      var rest []byte
-      rest, err = r.ReadBytes('\n')
-      if err != nil {
-        /* TODO: be more fault tolerant */
-        break
-      }
-
-      if recordId == id {
-        line = append(line, rest...)
-        break
-      }
-      pos += int64(len(line)) + int64(len(rest))
+  for {
+    line, err = r.ReadBytes(',')
+    if err != nil {
+      break
     }
-    lineNum += 1
+
+    var recordId int64
+    recordId, err = strconv.ParseInt(string(line[:len(line)-1]), 10, 64)
+    if err != nil {
+      /* TODO: be more fault tolerant */
+      break
+    }
+
+    var rest []byte
+    rest, err = r.ReadBytes('\n')
+    if err != nil {
+      /* TODO: be more fault tolerant */
+      break
+    }
+
+    if recordId == id {
+      line = append(line, rest...)
+      break
+    }
+    pos += int64(len(line)) + int64(len(rest))
   }
 
   return
@@ -335,18 +356,40 @@ func (db *Csv) FindActivity(id int64) (activity *Activity, err error) {
   if err != nil {
     return
   }
+  activity, err = db.recordToActivity(record)
+  return
+}
 
-  activity = &Activity{Id: id, Name: record[1], Project: record[2]}
-  activity.SetTagList(record[3])
+func (db *Csv) FindAllActivities() (activities []*Activity, err error) {
+  db.Mutex.RLock()
+  defer db.Mutex.RUnlock()
 
-  activity.Start, err = time.Parse(time.RFC3339Nano, record[4])
+  var f *os.File
+  f, err = os.Open(db.Filename)
   if err != nil {
     return
   }
-  activity.End, err = time.Parse(time.RFC3339Nano, record[5])
+  defer f.Close()
+
+  _, err = db.seekToData(f)
   if err != nil {
     return
   }
 
+  r := csv.NewReader(f)
+
+  var records [][]string
+  records, err = r.ReadAll()
+  if err != nil {
+    return
+  }
+
+  activities = make([]*Activity, len(records))
+  for i, record := range records {
+    activities[i], err = db.recordToActivity(record)
+    if err != nil {
+      return
+    }
+  }
   return
 }

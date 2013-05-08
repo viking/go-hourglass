@@ -142,3 +142,46 @@ func TestCsv_SaveActivity_WithExistingActivity(t *testing.T) {
     csvTestRun(f, t)
   }
 }
+
+func TestCsv_FindAllActivities(t *testing.T) {
+  f := func (db *Csv) {
+    activity_1 := &Activity{Name: "foo", Project: "bar"}
+    activity_1.End = time.Now()
+    activity_1.Start = activity_1.End.Add(-time.Hour)
+    err := db.SaveActivity(activity_1)
+    if err != nil {
+      t.Error(err)
+      return
+    }
+
+    activity_2 := &Activity{Name: "baz", Project: "blargh"}
+    activity_2.End = time.Now()
+    activity_2.Start = activity_2.End.Add(-time.Hour)
+    err = db.SaveActivity(activity_2)
+    if err != nil {
+      t.Error(err)
+      return
+    }
+
+    var activities []*Activity
+    activities, err = db.FindAllActivities()
+    if err != nil {
+      t.Error(err)
+      return
+    }
+
+    if len(activities) != 2 {
+      t.Error("expected to find 2 activity, but found", len(activities))
+      return
+    }
+
+    if !activity_1.Equal(activities[0]) {
+      t.Error("expected:\n", activity_1, "\ngot:\n", activities[0])
+    }
+
+    if !activity_2.Equal(activities[1]) {
+      t.Error("expected:\n", activity_2, "\ngot:\n", activities[1])
+    }
+  }
+  csvTestRun(f, t)
+}
