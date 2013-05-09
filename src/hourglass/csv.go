@@ -38,6 +38,79 @@ func (db *Csv) Valid() (bool, error) {
   return db.valid, nil
 }
 
+func (db *Csv) Version() (version int, err error) {
+  return db.version, nil
+}
+
+func (db *Csv) Migrate() (err error) {
+  for db.version < CsvVersion {
+    switch db.version {
+    case 0:
+      err = db.writeFrontMatter(1, 0)
+      if err == nil {
+        err = db.appendRecord([]string{"id", "name", "project", "tags",
+          "start", "end"})
+      }
+    }
+    if err != nil {
+      return
+    }
+    db.version++
+  }
+  return
+}
+
+func (db *Csv) SaveActivity(activity *Activity) (err error) {
+  if activity.Id > 0 {
+    err = db.updateActivity(activity)
+  } else {
+    err = db.createActivity(activity)
+  }
+  return
+}
+
+func (db *Csv) FindActivity(id int64) (activity *Activity, err error) {
+  var line []byte
+
+  _, line, err = db.findActivityLine(id)
+  if err == io.EOF {
+    err = ErrNotFound
+    return
+  }
+
+  buf := bytes.NewBuffer(line)
+  r := csv.NewReader(buf)
+
+  var record []string
+  record, err = r.Read()
+  if err != nil {
+    return
+  }
+  activity, err = db.recordToActivity(record)
+  return
+}
+
+func (db *Csv) FindAllActivities() (activities []*Activity, err error) {
+  activities, err = db.findActivities(nil)
+  return
+}
+
+func (db *Csv) FindRunningActivities() (activities []*Activity, err error) {
+  filter := func(a *Activity) bool { return a.IsRunning() }
+  activities, err = db.findActivities(filter)
+  return
+}
+
+func (db *Csv) FindActivitiesBetween(lower time.Time, upper time.Time) (activities []*Activity, err error) {
+  filter := func(a *Activity) bool {
+    return (a.Start.Equal(lower) || a.Start.After(lower)) && a.Start.Before(upper)
+  }
+  activities, err = db.findActivities(filter)
+  return
+}
+
+/* unexported functions */
+
 func (db *Csv) seekToHeader(f *os.File) (pos int64, err error) {
   /* Front matter is 45 bytes long */
   pos, err = f.Seek(45, 0)
@@ -176,28 +249,6 @@ func (db *Csv) readAll(pos int64) (data []byte, err error) {
   return
 }
 
-func (db *Csv) Version() (version int, err error) {
-  return db.version, nil
-}
-
-func (db *Csv) Migrate() (err error) {
-  for db.version < CsvVersion {
-    switch db.version {
-    case 0:
-      err = db.writeFrontMatter(1, 0)
-      if err == nil {
-        err = db.appendRecord([]string{"id", "name", "project", "tags",
-          "start", "end"})
-      }
-    }
-    if err != nil {
-      return
-    }
-    db.version++
-  }
-  return
-}
-
 func (db *Csv) activityToRecord(activity *Activity) (record []string) {
   record = make([]string, 6)
   record[0] = strconv.FormatInt(activity.Id, 10)
@@ -288,15 +339,6 @@ func (db *Csv) updateActivity(activity *Activity) (err error) {
   return
 }
 
-func (db *Csv) SaveActivity(activity *Activity) (err error) {
-  if activity.Id > 0 {
-    err = db.updateActivity(activity)
-  } else {
-    err = db.createActivity(activity)
-  }
-  return
-}
-
 func (db *Csv) findActivityLine(id int64) (pos int64, line []byte, err error) {
   db.Mutex.RLock()
   defer db.Mutex.RUnlock()
@@ -345,27 +387,6 @@ func (db *Csv) findActivityLine(id int64) (pos int64, line []byte, err error) {
   return
 }
 
-func (db *Csv) FindActivity(id int64) (activity *Activity, err error) {
-  var line []byte
-
-  _, line, err = db.findActivityLine(id)
-  if err == io.EOF {
-    err = ErrNotFound
-    return
-  }
-
-  buf := bytes.NewBuffer(line)
-  r := csv.NewReader(buf)
-
-  var record []string
-  record, err = r.Read()
-  if err != nil {
-    return
-  }
-  activity, err = db.recordToActivity(record)
-  return
-}
-
 func (db *Csv) findActivities(filter func(*Activity) bool) (activities []*Activity, err error) {
   db.Mutex.RLock()
   defer db.Mutex.RUnlock()
@@ -401,24 +422,5 @@ func (db *Csv) findActivities(filter func(*Activity) bool) (activities []*Activi
       activities = append(activities, activity)
     }
   }
-  return
-}
-
-func (db *Csv) FindAllActivities() (activities []*Activity, err error) {
-  activities, err = db.findActivities(nil)
-  return
-}
-
-func (db *Csv) FindRunningActivities() (activities []*Activity, err error) {
-  filter := func(a *Activity) bool { return a.IsRunning() }
-  activities, err = db.findActivities(filter)
-  return
-}
-
-func (db *Csv) FindActivitiesBetween(lower time.Time, upper time.Time) (activities []*Activity, err error) {
-  filter := func(a *Activity) bool {
-    return (a.Start.Equal(lower) || a.Start.After(lower)) && a.Start.Before(upper)
-  }
-  activities, err = db.findActivities(filter)
   return
 }
