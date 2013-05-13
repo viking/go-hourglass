@@ -10,10 +10,10 @@ import (
 
 /* help messages */
 const (
-  StartHelp = "Usage: %s start <name> [project] [tag1[, tag2[, ...]]]\n\nStart a new activity"
-  StopHelp = "Usage: %s stop\n\nStop all activities"
-  ListHelp = "Usage: %s list [all|week]\n\nList activities"
-  EditHelp = "Usage: %s edit <id> <name|project|tags|start|end> [value1[, [value2][, ...]]]\n\nEdit an activity\n\nFor the tags option, each tag should be a separate argument. Acceptable date formats are:\n\t2006-01-02 15:04\n\t2006-01-02 15:04 -0700"
+  startHelp = "Usage: %s start <name> [project] [tag1[, tag2[, ...]]]\n\nStart a new activity"
+  stopHelp = "Usage: %s stop\n\nStop all activities"
+  listHelp = "Usage: %s list [all|week]\n\nList activities"
+  editHelp = "Usage: %s edit <id> <name|project|tags|start|end> [value1[, [value2][, ...]]]\n\nEdit an activity\n\nFor the tags option, each tag should be a separate argument. Acceptable date formats are:\n\t2006-01-02 15:04\n\t2006-01-02 15:04 -0700"
 )
 
 /* edit date format */
@@ -70,7 +70,7 @@ func (StartCommand) Run(c Clock, db Database, args ...string) (output string, er
 }
 
 func (StartCommand) Help() string {
-  return StartHelp
+  return startHelp
 }
 
 /* stop */
@@ -102,7 +102,7 @@ func (StopCommand) Run(c Clock, db Database, args ...string) (output string, err
 }
 
 func (StopCommand) Help() string {
-  return StopHelp
+  return stopHelp
 }
 
 /* project duration, needed for sorting */
@@ -166,8 +166,7 @@ func (pdl *projectDurationList) String() (str string) {
 /* list */
 type ListCommand struct{}
 
-func (ListCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
-
+func (cmd ListCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
   if len(args) == 0 {
     now := c.Now()
 
@@ -181,21 +180,14 @@ func (ListCommand) Run(c Clock, db Database, args ...string) (output string, err
     if err != nil {
       return
     }
-
-    totals := newProjectDurationList()
     if len(activities) == 0 {
       output = "there have been no activities today"
+      return
     } else {
-      output = fmt.Sprint("| id\t| name\t| project\t| tags\t| state\t| duration")
-      for _, activity := range(activities) {
-        duration := activity.Duration(c)
-        output += fmt.Sprintf("\n| %d\t| %s\t| %s\t| %s\t| %s\t| %s",
-          activity.Id, activity.Name, activity.Project, activity.TagList(),
-          activity.Status(), duration)
-        totals.add(activity.Project, duration)
-      }
-      output += fmt.Sprint("\n", totals)
+      table := &activityTable{activities, c, tableModeDay}
+      output = table.String()
     }
+
   } else if args[0] == "week" {
     now := c.Now()
 
@@ -233,20 +225,15 @@ func (ListCommand) Run(c Clock, db Database, args ...string) (output string, err
         }
         output += fmt.Sprintf("=== %s (%04d-%02d-%02d) ===\n",
           day, date.Year(), int(date.Month()), date.Day())
-        output += fmt.Sprint("| id\t| name\t| project\t| tags\t| state\t| duration")
 
-        /* print out the day's activities */
-        totals := newProjectDurationList()
+        /* collect the day's activities */
+        lower := i
+        upper := i
         for ; i < len(activities) && activities[i].Start.Weekday() == day; i++ {
-          activity := activities[i]
-
-          duration := activity.Duration(c)
-          output += fmt.Sprintf("\n| %d\t| %s\t| %s\t| %s\t| %s\t| %s",
-            activity.Id, activity.Name, activity.Project, activity.TagList(),
-            activity.Status(), duration)
-          totals.add(activity.Project, duration)
+          upper++
         }
-        output += fmt.Sprint("\n", totals)
+        table := &activityTable{activities[lower:upper], c, tableModeWeek}
+        output += table.String()
 
         numDays++
       }
@@ -261,13 +248,8 @@ func (ListCommand) Run(c Clock, db Database, args ...string) (output string, err
     if len(activities) == 0 {
       output = "there aren't any activities"
     } else {
-      output = fmt.Sprint("| date\t| id\t| name\t| project\t| tags\t| state\t| duration")
-      for _, activity := range(activities) {
-        output += fmt.Sprintf("\n| %04d-%02d-%02d\t| %d\t| %s\t| %s\t| %s\t| %s\t| %s",
-          activity.Start.Year(), activity.Start.Month(), activity.Start.Day(),
-          activity.Id, activity.Name, activity.Project, activity.TagList(),
-          activity.Status(), activity.Duration(c))
-      }
+      table := &activityTable{activities, c, tableModeAll}
+      output = table.String()
     }
   }
 
@@ -275,7 +257,62 @@ func (ListCommand) Run(c Clock, db Database, args ...string) (output string, err
 }
 
 func (ListCommand) Help() string {
-  return ListHelp
+  return listHelp
+}
+
+type tableMode int
+const (
+  tableModeDay tableMode = iota
+  tableModeWeek
+  tableModeAll
+)
+
+type activityTable struct {
+  activities []*Activity
+  c Clock
+  mode tableMode
+}
+
+func (table *activityTable) header() (output string) {
+  switch table.mode {
+  case tableModeDay, tableModeWeek:
+    output = "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|"
+  case tableModeAll:
+    output = "| date\t| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|"
+  }
+  return
+}
+
+func (table *activityTable) formatActivity(activity *Activity) (output string) {
+  var date, start, end string
+  if !activity.Start.IsZero() {
+    date = activity.Start.Format("2006-01-02")
+    start = activity.Start.Format(DateFormat)
+  }
+  if !activity.End.IsZero() {
+    end = activity.End.Format(DateFormat)
+  }
+  duration := activity.Duration(table.c)
+  output = fmt.Sprintf("| %d\t| %s\t| %s\t| %s\t| %s\t| %s\t| %s\t| %s\t|",
+    activity.Id, activity.Name, activity.Project, activity.TagList(),
+    activity.Status(), start, end, duration)
+  if table.mode == tableModeAll {
+    output = fmt.Sprintf("| %s\t%s", date, output)
+  }
+  return
+}
+
+func (table *activityTable) String() (output string) {
+  totals := newProjectDurationList()
+  output = table.header()
+  for _, activity := range(table.activities) {
+    output += fmt.Sprint("\n", table.formatActivity(activity))
+    totals.add(activity.Project, activity.Duration(table.c))
+  }
+  if table.mode != tableModeAll {
+    output += fmt.Sprint("\n", totals)
+  }
+  return
 }
 
 /* edit */
@@ -352,5 +389,5 @@ func (EditCommand) Run(c Clock, db Database, args ...string) (output string, err
 }
 
 func (EditCommand) Help() string {
-  return EditHelp
+  return editHelp
 }

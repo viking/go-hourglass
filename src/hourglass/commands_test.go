@@ -4,7 +4,68 @@ import (
   "testing"
   "time"
   "sort"
+  "os"
+  "os/exec"
+  "syscall"
+  "io/ioutil"
 )
+
+/* output diff */
+func checkStringsEqual(expected, actual string) (ok bool, diff string, err error) {
+  if expected == actual {
+    ok = true
+    return
+  }
+
+  var exp *os.File
+  exp, err = ioutil.TempFile("", "expected")
+  if err != nil {
+    return
+  }
+  defer exp.Close()
+  defer os.Remove(exp.Name())
+  _, err = exp.Write([]byte(expected))
+  if err != nil {
+    return
+  }
+  exp.Sync()
+
+  var act *os.File
+  act, err = ioutil.TempFile("", "actual")
+  if err != nil {
+    return
+  }
+  defer act.Close()
+  defer os.Remove(act.Name())
+  _, err = act.Write([]byte(actual))
+  if err != nil {
+    return
+  }
+  act.Sync()
+
+  // diff's exit status is 1 if the files differ, and Go returns an error
+  // when the exit status is non-zero
+  cmd := exec.Command("diff", "-u", exp.Name(), act.Name())
+  var cmdOutput []byte
+  cmdOutput, err = cmd.Output()
+  if err != nil {
+    var typeOk bool
+    var exitErr *exec.ExitError
+    exitErr, typeOk = err.(*exec.ExitError)
+    if !typeOk {
+      return
+    }
+
+    var status syscall.WaitStatus
+    status, typeOk = exitErr.Sys().(syscall.WaitStatus)
+    if !typeOk || status.ExitStatus() > 1 {
+      return
+    }
+    err = nil
+  }
+  diff = string(cmdOutput)
+  return
+}
 
 /* activity sorting */
 type activitySlice []*Activity
@@ -133,8 +194,13 @@ func TestStartCommand_Run(t *testing.T) {
     }
     output, err := cmd.Run(c, db, args...)
 
-    if output != config.output {
-      t.Errorf("expected output to be '%s', but was '%s'", config.output, output)
+    outputOk, diff, checkErr := checkStringsEqual(config.output, output)
+    if !outputOk {
+      if err == nil {
+        t.Errorf("test %d: bad output:\n%s", i, diff)
+      } else {
+        t.Errorf("test %d: output didn't match, but couldn't create diff: %s", i, checkErr)
+      }
     }
 
     if err != nil {
@@ -213,8 +279,14 @@ func TestStopCommand_Run(t *testing.T) {
     }
 
     output, err := cmd.Run(c, db, config.args...)
-    if output != config.output {
-      t.Errorf("expected output to be '%s', but was '%s'", config.output, output)
+
+    outputOk, diff, checkErr := checkStringsEqual(config.output, output)
+    if !outputOk {
+      if err == nil {
+        t.Errorf("test %d: bad output:\n%s", i, diff)
+      } else {
+        t.Errorf("test %d: output didn't match, but couldn't create diff: %s", i, checkErr)
+      }
     }
 
     if err != nil {
@@ -253,7 +325,7 @@ var listTests = []struct {
   output string
   err bool
 }{
-  /* listing activities */
+  /* test 0: listing activities */
   {
     when(2013, 4, 26, 22),
     []*Activity{
@@ -261,14 +333,14 @@ var listTests = []struct {
       &Activity{Name: "bar", Project: "baz", Start: when(2013, 4, 26, 21)},
     },
     nil,
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-      "| 1\t| foo\t| \t| one, two\t| stopped\t| 01h00m\n" +
-      "| 2\t| bar\t| baz\t| \t| running\t| 01h00m\n" +
-      "baz: 01h00m, unsorted: 01h00m",
+    "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 1\t| foo\t| \t| one, two\t| stopped\t| 2013-04-26 14:00\t| 2013-04-26 15:00\t| 01h00m\t|\n" +
+    "| 2\t| bar\t| baz\t| \t| running\t| 2013-04-26 21:00\t| \t| 01h00m\t|\n" +
+    "baz: 01h00m, unsorted: 01h00m",
     false,
   },
 
-  /* listing only today's activities */
+  /* test 1: listing only today's activities */
   {
     when(2013, 4, 26, 22),
     []*Activity{
@@ -277,21 +349,21 @@ var listTests = []struct {
       &Activity{Name: "bar", Start: when(2013, 4, 26, 21)},
     },
     nil,
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-      "| 2\t| baz\t| proj\t| \t| stopped\t| 01h00m\n" +
-      "| 3\t| bar\t| \t| \t| running\t| 01h00m\n" +
-      "proj: 01h00m, unsorted: 01h00m",
+    "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 2\t| baz\t| proj\t| \t| stopped\t| 2013-04-26 14:00\t| 2013-04-26 15:00\t| 01h00m\t|\n" +
+    "| 3\t| bar\t| \t| \t| running\t| 2013-04-26 21:00\t| \t| 01h00m\t|\n" +
+    "proj: 01h00m, unsorted: 01h00m",
     false,
   },
 
-  /* output when there are no activities */
+  /* test 2: output when there are no activities */
   {time.Now(), nil, nil, "there have been no activities today", false},
 
-  /* week argument */
+  /* test 3: week argument */
   {
     when(2013, 4, 27, 22),
     []*Activity{
-      &Activity{Name: "sat", Start: when(2013, 4, 19, 14), End: when(2013, 4, 19, 15)},
+      &Activity{Name: "sat", Start: when(2013, 4, 20, 14), End: when(2013, 4, 20, 15)},
       &Activity{Name: "sun", Start: when(2013, 4, 21, 14), End: when(2013, 4, 21, 15)},
       &Activity{Name: "mon", Start: when(2013, 4, 22, 14), End: when(2013, 4, 22, 15)},
       &Activity{Name: "wed", Start: when(2013, 4, 24, 14), End: when(2013, 4, 24, 15)},
@@ -301,33 +373,33 @@ var listTests = []struct {
     },
     []string{"week"},
     "=== Sunday (2013-04-21) ===\n" +
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-    "| 2\t| sun\t| \t| \t| stopped\t| 01h00m\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 2\t| sun\t| \t| \t| stopped\t| 2013-04-21 14:00\t| 2013-04-21 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Monday (2013-04-22) ===\n" +
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-    "| 3\t| mon\t| \t| \t| stopped\t| 01h00m\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 3\t| mon\t| \t| \t| stopped\t| 2013-04-22 14:00\t| 2013-04-22 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Wednesday (2013-04-24) ===\n" +
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-    "| 4\t| wed\t| \t| \t| stopped\t| 01h00m\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 4\t| wed\t| \t| \t| stopped\t| 2013-04-24 14:00\t| 2013-04-24 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Thursday (2013-04-25) ===\n" +
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-    "| 5\t| thu\t| \t| \t| stopped\t| 01h00m\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 5\t| thu\t| \t| \t| stopped\t| 2013-04-25 14:00\t| 2013-04-25 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Friday (2013-04-26) ===\n" +
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-    "| 6\t| fri\t| \t| \t| stopped\t| 01h00m\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 6\t| fri\t| \t| \t| stopped\t| 2013-04-26 14:00\t| 2013-04-26 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Saturday (2013-04-27) ===\n" +
-    "| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-    "| 7\t| sat\t| \t| \t| running\t| 01h00m\n" +
+    "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 7\t| sat\t| \t| \t| running\t| 2013-04-27 21:00\t| \t| 01h00m\t|\n" +
     "unsorted: 01h00m",
     false,
   },
 
-  /* all argument */
+  /* test 4: all argument */
   {
     when(2013, 4, 26, 22),
     []*Activity{
@@ -336,10 +408,10 @@ var listTests = []struct {
       &Activity{Name: "bar", Start: when(2013, 4, 26, 21)},
     },
     []string{"all"},
-    "| date\t| id\t| name\t| project\t| tags\t| state\t| duration\n" +
-      "| 2013-04-12\t| 1\t| baz\t| \t| \t| stopped\t| 01h00m\n" +
-      "| 2013-04-19\t| 2\t| foo\t| \t| \t| stopped\t| 01h00m\n" +
-      "| 2013-04-26\t| 3\t| bar\t| \t| \t| running\t| 01h00m",
+    "| date\t| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
+    "| 2013-04-12\t| 1\t| baz\t| \t| \t| stopped\t| 2013-04-12 14:00\t| 2013-04-12 15:00\t| 01h00m\t|\n" +
+    "| 2013-04-19\t| 2\t| foo\t| \t| \t| stopped\t| 2013-04-19 14:00\t| 2013-04-19 15:00\t| 01h00m\t|\n" +
+    "| 2013-04-26\t| 3\t| bar\t| \t| \t| running\t| 2013-04-26 21:00\t| \t| 01h00m\t|",
     false,
   },
 
@@ -358,8 +430,14 @@ func TestListCommand_Run(t *testing.T) {
     }
 
     output, err := cmd.Run(c, db, config.args...)
-    if output != config.output {
-      t.Errorf("test %d: expected output to be:\n%s\nbut was:\n%s\n", i, config.output, output)
+
+    outputOk, diff, checkErr := checkStringsEqual(config.output, output)
+    if !outputOk {
+      if err == nil {
+        t.Errorf("test %d: bad output:\n%s", i, diff)
+      } else {
+        t.Errorf("test %d: output didn't match, but couldn't create diff: %s", i, checkErr)
+      }
     }
 
     if err != nil {
@@ -564,9 +642,16 @@ func TestEditCommand_Run(t *testing.T) {
 
     var output string
     output, err = cmd.Run(c, db, config.args...)
-    if output != config.output {
-      t.Errorf("test %d: expected output to be '%s', but was '%s'", testNum, config.output, output)
+
+    outputOk, diff, checkErr := checkStringsEqual(config.output, output)
+    if !outputOk {
+      if err == nil {
+        t.Errorf("test %d: bad output:\n%s", testNum, diff)
+      } else {
+        t.Errorf("test %d: output didn't match, but couldn't create diff: %s", testNum, checkErr)
+      }
     }
+
     if err != nil {
       if !config.err {
         t.Errorf("test %d: %s", testNum, err)
