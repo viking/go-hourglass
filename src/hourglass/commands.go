@@ -4,18 +4,27 @@ import (
   "time"
   "fmt"
   "sort"
+  "strconv"
+  "strings"
 )
 
 /* help messages */
 const (
-  StartHelp = "Usage: %s start <name> [project] [ [tag1, tag2, ...] ]\n\nStart a new activity"
+  StartHelp = "Usage: %s start <name> [project] [tag1[, tag2[, ...]]]\n\nStart a new activity"
   StopHelp = "Usage: %s stop\n\nStop all activities"
   ListHelp = "Usage: %s list [all|week]\n\nList activities"
+  EditHelp = "Usage: %s edit <id> <name|project|tags|start|end> [value1[, [value2][, ...]]]\n\nEdit an activity\n\nFor the tags option, each tag should be a separate argument. Acceptable date formats are:\n\t2006-01-02 15:04\n\t2006-01-02 15:04 -0700"
+)
+
+/* edit date format */
+const (
+  DateFormat = "2006-01-02 15:04"
+  DateWithZoneFormat = "2006-01-02 15:04 -0700"
 )
 
 /* syntax error */
-type SyntaxErr string
-func (s SyntaxErr) Error() string {
+type ErrSyntax string
+func (s ErrSyntax) Error() string {
   return fmt.Sprint("syntax error: ", string(s))
 }
 
@@ -33,7 +42,7 @@ func (StartCommand) Run(c Clock, db Database, args ...string) (output string, er
   var tags []string
 
   if len(args) == 0 {
-    err = SyntaxErr("missing name argument")
+    err = ErrSyntax("missing name argument")
     return
   }
 
@@ -267,4 +276,81 @@ func (ListCommand) Run(c Clock, db Database, args ...string) (output string, err
 
 func (ListCommand) Help() string {
   return ListHelp
+}
+
+/* edit */
+type EditCommand struct{}
+
+func (EditCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
+  if len(args) > 1 {
+    var id int64
+    id, err = strconv.ParseInt(args[0], 10, 64)
+    if err != nil {
+      err = ErrSyntax("non-integer id")
+      return
+    }
+
+    var activity *Activity
+    activity, err = db.FindActivity(id)
+    if err != nil {
+      return
+    }
+
+    field := args[1]
+    switch(field) {
+    case "name":
+      if len(args) > 2 {
+        activity.Name = strings.Join(args[2:], " ")
+      } else {
+        err = ErrSyntax("name is required")
+        return
+      }
+    case "project":
+      if len(args) > 2 {
+        activity.Project = strings.Join(args[2:], " ")
+      } else {
+        activity.Project = ""
+      }
+    case "tags":
+      activity.Tags = args[2:]
+    case "start", "end":
+      if len(args) > 2 {
+        dateString := strings.Join(args[2:], " ")
+
+        var t time.Time
+        t, err = time.ParseInLocation(DateFormat, dateString, time.Local)
+        if err != nil {
+          t, err = time.Parse(DateWithZoneFormat, dateString)
+        }
+        if err != nil {
+          err = ErrSyntax("invalid date")
+          return
+        }
+        if args[1] == "start" {
+          activity.Start = t
+        } else {
+          activity.End = t
+        }
+      } else {
+        err = ErrSyntax("date is required")
+        return
+      }
+    default:
+      err = ErrSyntax("invalid field name")
+      return
+    }
+
+    err = db.SaveActivity(activity)
+    if err != nil {
+      return
+    }
+    output = "ok"
+  } else {
+    err = ErrSyntax("must have at least 3 arguments")
+  }
+  return
+}
+
+func (EditCommand) Help() string {
+  return EditHelp
 }

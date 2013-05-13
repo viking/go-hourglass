@@ -141,9 +141,9 @@ func TestStartCommand_Run(t *testing.T) {
       if !config.err {
         t.Errorf("test %d: %s", i, err)
       } else if config.syntaxErr {
-        _, ok := err.(SyntaxErr)
+        _, ok := err.(ErrSyntax)
         if !ok {
-          t.Errorf("test %d: expected error type SyntaxErr, got %T", i, err)
+          t.Errorf("test %d: expected error type ErrSyntax, got %T", i, err)
         }
       }
       continue
@@ -371,5 +371,229 @@ func TestListCommand_Run(t *testing.T) {
     if config.err {
       t.Errorf("test %d: expected error, got nil", i)
     }
+  }
+}
+
+/* edit command tests */
+var editTests = []struct {
+  activityBefore *Activity
+  args []string
+  activityAfter *Activity
+  output string
+  err bool
+}{
+  /* test 0: no args */
+  {nil, nil, nil, "", true},
+
+  /* test 1: non-integer id */
+  {nil, []string{"foo", "name", "bar"}, nil, "", true},
+
+  /* test 2: id for missing activity */
+  {nil, []string{"1", "name", "bar"}, nil, "", true},
+
+  /* test 3: invalid field name */
+  {
+    &Activity{Name: "foo"},
+    []string{"1", "blargh", "bar"},
+    &Activity{Name: "foo"},
+    "",
+    true,
+  },
+
+  /* test 4: not enough arguments to name */
+  {
+    &Activity{Name: "foo"},
+    []string{"1", "name"},
+    &Activity{Name: "foo"},
+    "",
+    true,
+  },
+
+  /* test 5: change name */
+  {
+    &Activity{Name: "foo"},
+    []string{"1", "name", "bar"},
+    &Activity{Name: "bar"},
+    "ok",
+    false,
+  },
+
+  /* test 6: change name with extra args */
+  {
+    &Activity{Name: "foo"},
+    []string{"1", "name", "bar", "baz"},
+    &Activity{Name: "bar baz"},
+    "ok",
+    false,
+  },
+
+  /* test 7: change project */
+  {
+    &Activity{Project: "foo"},
+    []string{"1", "project", "bar"},
+    &Activity{Project: "bar"},
+    "ok",
+    false,
+  },
+
+  /* test 8: change project with extra args */
+  {
+    &Activity{Project: "foo"},
+    []string{"1", "project", "bar", "baz"},
+    &Activity{Project: "bar baz"},
+    "ok",
+    false,
+  },
+
+  /* test 9: remove project */
+  {
+    &Activity{Project: "foo"},
+    []string{"1", "project"},
+    &Activity{},
+    "ok",
+    false,
+  },
+
+  /* test 10: change tags */
+  {
+    &Activity{Tags: []string{"foo", "bar"}},
+    []string{"1", "tags", "baz", "junk"},
+    &Activity{Tags: []string{"baz", "junk"}},
+    "ok",
+    false,
+  },
+
+  /* test 11: remove tags */
+  {
+    &Activity{Tags: []string{"foo", "bar"}},
+    []string{"1", "tags"},
+    &Activity{Tags: []string{}},
+    "ok",
+    false,
+  },
+
+  /* test 12: change start to local time */
+  {
+    &Activity{Start: when(2013, 5, 13, 13)},
+    []string{"1", "start", "2013-05-13 14:00"},
+    &Activity{Start: when(2013, 5, 13, 14)},
+    "ok",
+    false,
+  },
+
+  /* test 13: change start to local time with multiple args */
+  {
+    &Activity{Start: when(2013, 5, 13, 13)},
+    []string{"1", "start", "2013-05-13", "14:00"},
+    &Activity{Start: when(2013, 5, 13, 14)},
+    "ok",
+    false,
+  },
+
+  /* test 14: not enough arguments for start */
+  {
+    &Activity{Start: when(2013, 5, 13, 13)},
+    []string{"1", "start"},
+    &Activity{Start: when(2013, 5, 13, 13)},
+    "",
+    true,
+  },
+
+  /* test 15: change start to time with zone */
+  {
+    &Activity{Start: when(2013, 5, 13, 13)},
+    []string{"1", "start", "2013-05-13 15:00 -0400"},
+    &Activity{Start: when(2013, 5, 13, 14)},
+    "ok",
+    false,
+  },
+
+  /* test 16: change end to local time */
+  {
+    &Activity{End: when(2013, 5, 13, 13)},
+    []string{"1", "end", "2013-05-13 14:00"},
+    &Activity{End: when(2013, 5, 13, 14)},
+    "ok",
+    false,
+  },
+
+  /* test 17: change end to local time with multiple args */
+  {
+    &Activity{End: when(2013, 5, 13, 13)},
+    []string{"1", "end", "2013-05-13", "14:00"},
+    &Activity{End: when(2013, 5, 13, 14)},
+    "ok",
+    false,
+  },
+
+  /* test 18: not enough arguments for end */
+  {
+    &Activity{End: when(2013, 5, 13, 13)},
+    []string{"1", "end"},
+    &Activity{End: when(2013, 5, 13, 13)},
+    "",
+    true,
+  },
+
+  /* test 19: change end to time with zone */
+  {
+    &Activity{End: when(2013, 5, 13, 13)},
+    []string{"1", "end", "2013-05-13 15:00 -0400"},
+    &Activity{End: when(2013, 5, 13, 14)},
+    "ok",
+    false,
+  },
+}
+
+func TestEditCommand_Run(t *testing.T) {
+  for testNum, config := range editTests {
+    var err error
+
+    cmd := EditCommand{}
+    db := &fakeDb{}
+    c := fakeCmdClock{time.Now()}
+
+    if config.activityBefore != nil {
+      err = db.SaveActivity(config.activityBefore)
+      if err != nil {
+        t.Errorf("test %d: %s", testNum, err)
+        continue
+      }
+      config.activityAfter.Id = config.activityBefore.Id
+    }
+
+    var output string
+    output, err = cmd.Run(c, db, config.args...)
+    if output != config.output {
+      t.Errorf("test %d: expected output to be '%s', but was '%s'", testNum, config.output, output)
+    }
+    if err != nil {
+      if !config.err {
+        t.Errorf("test %d: %s", testNum, err)
+      }
+      continue
+    }
+    if config.err {
+      t.Errorf("test %d: expected error, got nil", testNum)
+    }
+
+    if config.activityBefore != nil {
+      var foundActivity *Activity
+      foundActivity, err = db.FindActivity(config.activityBefore.Id)
+      if err != nil {
+        t.Errorf("test %d: %s", testNum, err)
+        continue
+      }
+      if !config.activityAfter.Equal(foundActivity) {
+        t.Errorf("test %d: expected %v, got %v", testNum, config.activityAfter, foundActivity)
+      }
+    }
+  }
+}
+
+func TestEditCommand_Help(t *testing.T) {
+  cmd := EditCommand{}
+  if cmd.Help() == "" {
+    t.Error("no help available")
   }
 }
