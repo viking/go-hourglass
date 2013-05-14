@@ -334,8 +334,8 @@ var listTests = []struct {
     },
     nil,
     "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 1\t| foo\t| \t| one, two\t| stopped\t| 2013-04-26 14:00\t| 2013-04-26 15:00\t| 01h00m\t|\n" +
-    "| 2\t| bar\t| baz\t| \t| running\t| 2013-04-26 21:00\t| \t| 01h00m\t|\n" +
+    "| 1\t| foo\t| \t| one, two\t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
+    "| 2\t| bar\t| baz\t| \t| running\t| 21:00\t| \t| 01h00m\t|\n" +
     "baz: 01h00m, unsorted: 01h00m",
     false,
   },
@@ -350,8 +350,8 @@ var listTests = []struct {
     },
     nil,
     "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 2\t| baz\t| proj\t| \t| stopped\t| 2013-04-26 14:00\t| 2013-04-26 15:00\t| 01h00m\t|\n" +
-    "| 3\t| bar\t| \t| \t| running\t| 2013-04-26 21:00\t| \t| 01h00m\t|\n" +
+    "| 2\t| baz\t| proj\t| \t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
+    "| 3\t| bar\t| \t| \t| running\t| 21:00\t| \t| 01h00m\t|\n" +
     "proj: 01h00m, unsorted: 01h00m",
     false,
   },
@@ -374,27 +374,27 @@ var listTests = []struct {
     []string{"week"},
     "=== Sunday (2013-04-21) ===\n" +
     "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 2\t| sun\t| \t| \t| stopped\t| 2013-04-21 14:00\t| 2013-04-21 15:00\t| 01h00m\t|\n" +
+    "| 2\t| sun\t| \t| \t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Monday (2013-04-22) ===\n" +
     "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 3\t| mon\t| \t| \t| stopped\t| 2013-04-22 14:00\t| 2013-04-22 15:00\t| 01h00m\t|\n" +
+    "| 3\t| mon\t| \t| \t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Wednesday (2013-04-24) ===\n" +
     "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 4\t| wed\t| \t| \t| stopped\t| 2013-04-24 14:00\t| 2013-04-24 15:00\t| 01h00m\t|\n" +
+    "| 4\t| wed\t| \t| \t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Thursday (2013-04-25) ===\n" +
     "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 5\t| thu\t| \t| \t| stopped\t| 2013-04-25 14:00\t| 2013-04-25 15:00\t| 01h00m\t|\n" +
+    "| 5\t| thu\t| \t| \t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Friday (2013-04-26) ===\n" +
     "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 6\t| fri\t| \t| \t| stopped\t| 2013-04-26 14:00\t| 2013-04-26 15:00\t| 01h00m\t|\n" +
+    "| 6\t| fri\t| \t| \t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
     "unsorted: 01h00m\n\n" +
     "=== Saturday (2013-04-27) ===\n" +
     "| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 7\t| sat\t| \t| \t| running\t| 2013-04-27 21:00\t| \t| 01h00m\t|\n" +
+    "| 7\t| sat\t| \t| \t| running\t| 21:00\t| \t| 01h00m\t|\n" +
     "unsorted: 01h00m",
     false,
   },
@@ -409,9 +409,9 @@ var listTests = []struct {
     },
     []string{"all"},
     "| date\t| id\t| name\t| project\t| tags\t| state\t| start\t| end\t| duration\t|\n" +
-    "| 2013-04-12\t| 1\t| baz\t| \t| \t| stopped\t| 2013-04-12 14:00\t| 2013-04-12 15:00\t| 01h00m\t|\n" +
-    "| 2013-04-19\t| 2\t| foo\t| \t| \t| stopped\t| 2013-04-19 14:00\t| 2013-04-19 15:00\t| 01h00m\t|\n" +
-    "| 2013-04-26\t| 3\t| bar\t| \t| \t| running\t| 2013-04-26 21:00\t| \t| 01h00m\t|",
+    "| 2013-04-12\t| 1\t| baz\t| \t| \t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
+    "| 2013-04-19\t| 2\t| foo\t| \t| \t| stopped\t| 14:00\t| 15:00\t| 01h00m\t|\n" +
+    "| 2013-04-26\t| 3\t| bar\t| \t| \t| running\t| 21:00\t| \t| 01h00m\t|",
     false,
   },
 

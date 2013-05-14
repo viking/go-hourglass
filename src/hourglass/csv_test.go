@@ -96,6 +96,7 @@ var updateTests = []struct {
   {0, &Activity{Name: "foo", Project: "bar"}, &Activity{Name: "blah", Project: "quux"}},
   {1, &Activity{Name: "foo", Project: "bar"}, &Activity{Name: "blah", Project: "quux"}},
 }
+
 func TestCsv_SaveActivity_WithExistingActivity(t *testing.T) {
   for testNum, config := range updateTests {
     f := func (db *Csv) {

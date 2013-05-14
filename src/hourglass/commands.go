@@ -20,6 +20,7 @@ const (
 const (
   DateFormat = "2006-01-02 15:04"
   DateWithZoneFormat = "2006-01-02 15:04 -0700"
+  TimeFormat = "15:04"
 )
 
 /* syntax error */
@@ -287,10 +288,10 @@ func (table *activityTable) formatActivity(activity *Activity) (output string) {
   var date, start, end string
   if !activity.Start.IsZero() {
     date = activity.Start.Format("2006-01-02")
-    start = activity.Start.Format(DateFormat)
+    start = activity.Start.Format(TimeFormat)
   }
   if !activity.End.IsZero() {
-    end = activity.End.Format(DateFormat)
+    end = activity.End.Format(TimeFormat)
   }
   duration := activity.Duration(table.c)
   output = fmt.Sprintf("| %d\t| %s\t| %s\t| %s\t| %s\t| %s\t| %s\t| %s\t|",
