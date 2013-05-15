@@ -207,9 +207,9 @@ func TestStartCommand_Run(t *testing.T) {
       if !config.err {
         t.Errorf("test %d: %s", i, err)
       } else if config.syntaxErr {
-        _, ok := err.(ErrSyntax)
+        _, ok := err.(SyntaxError)
         if !ok {
-          t.Errorf("test %d: expected error type ErrSyntax, got %T", i, err)
+          t.Errorf("test %d: expected error type SyntaxError, got %T", i, err)
         }
       }
       continue
@@ -248,6 +248,108 @@ func TestStartCommand_Run(t *testing.T) {
 
 func TestStartCommand_Help(t *testing.T) {
   cmd := StartCommand{}
+  if cmd.Help() == "" {
+    t.Error("no help available")
+  }
+}
+
+/* restart command tests */
+var restartTests = []struct {
+  now time.Time
+  activity *Activity
+  args []string
+  output string
+  err bool
+  syntaxErr bool
+}{
+  {time.Now(), nil, nil, "", true, true},
+  {time.Now(), nil, []string{"foo"}, "", true, true},
+  {time.Now(), nil, []string{"1"}, "", true, false},
+  {time.Now(), &Activity{Name: "foo"}, []string{"1"}, "restarted activity 1 (new id: 2)", false, false},
+}
+
+func TestRestartCommand_Run(t *testing.T) {
+  for testNum, config := range restartTests {
+    var err error
+
+    cmd := RestartCommand{}
+    db := &fakeDb{}
+    c := fakeCmdClock{config.now}
+
+    if config.activity != nil {
+      err = db.SaveActivity(config.activity)
+      if err != nil {
+        t.Errorf("test %d: %s", testNum, err)
+        continue
+      }
+      if len(db.activityMap) != 1 {
+        t.Errorf("test %d: activity wasn't saved", testNum)
+        continue
+      }
+    }
+
+    var output string
+    output, err = cmd.Run(c, db, config.args...)
+
+    outputOk, diff, checkErr := checkStringsEqual(config.output, output)
+    if !outputOk {
+      if err == nil {
+        t.Errorf("test %d: bad output:\n%s", testNum, diff)
+      } else {
+        t.Errorf("test %d: output didn't match, but couldn't create diff: %s", testNum, checkErr)
+      }
+    }
+
+    if err != nil {
+      if !config.err {
+        t.Errorf("test %d: %s", testNum, err)
+      } else if config.syntaxErr {
+        _, ok := err.(SyntaxError)
+        if !ok {
+          t.Errorf("test %d: expected error type SyntaxError, got %T", testNum, err)
+        }
+      }
+      continue
+    }
+    if config.err {
+      t.Errorf("test %d: expected error, got nil", testNum)
+    }
+
+    if len(db.activityMap) != 2 {
+      t.Errorf("test %d: activity wasn't saved", testNum)
+      continue
+    }
+
+    a := db.activityMap[1]
+    if a.Name != config.activity.Name {
+      t.Errorf("test %d: expected '%s', got '%s'", testNum, config.activity.Name, a.Name)
+    }
+    if a.Project != config.activity.Project {
+      t.Errorf("test %d: expected '%s', got '%s'", testNum, config.activity.Project, a.Project)
+    }
+    ok := len(a.Tags) == len(config.activity.Tags)
+    if ok {
+      for i, tag := range config.activity.Tags {
+        ok = tag == a.Tags[i]
+        if !ok {
+          break
+        }
+      }
+    }
+    if !ok {
+      t.Errorf("test %d: expected %v, got %v", testNum, config.activity.Tags, a.Tags)
+    }
+    if !a.Start.Equal(config.now) {
+      t.Errorf("test %d: expected %v, got %v", testNum, config.now, a.Start)
+    }
+    if !a.End.IsZero() {
+      t.Errorf("test %d: expected %v, got %v", testNum, time.Time{}, a.End)
+    }
+  }
+}
+
+func TestRestartCommand_Help(t *testing.T) {
+  cmd := RestartCommand{}
   if cmd.Help() == "" {
     t.Error("no help available")
   }

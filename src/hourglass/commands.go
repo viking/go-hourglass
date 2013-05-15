@@ -14,6 +14,7 @@ const (
   stopHelp = "Usage: %s stop\n\nStop all activities"
   listHelp = "Usage: %s list [all|week]\n\nList activities"
   editHelp = "Usage: %s edit <id> <name|project|tags|start|end> [value1[, [value2][, ...]]]\n\nEdit an activity\n\nFor the tags option, each tag should be a separate argument. Acceptable date formats are:\n\t2006-01-02 15:04\n\t2006-01-02 15:04 -0700"
+  restartHelp = "Usage: %s restart <id>\n\nStart a new activity with all of the same values as another activity"
 )
 
 /* edit date format */
@@ -24,8 +25,8 @@ const (
 )
 
 /* syntax error */
-type ErrSyntax string
-func (s ErrSyntax) Error() string {
+type SyntaxError string
+func (s SyntaxError) Error() string {
   return fmt.Sprint("syntax error: ", string(s))
 }
 
@@ -43,7 +44,7 @@ func (StartCommand) Run(c Clock, db Database, args ...string) (output string, er
   var tags []string
 
   if len(args) == 0 {
-    err = ErrSyntax("missing name argument")
+    err = SyntaxError("missing name argument")
     return
   }
 
@@ -72,6 +73,40 @@ func (StartCommand) Run(c Clock, db Database, args ...string) (output string, er
 
 func (StartCommand) Help() string {
   return startHelp
+}
+
+/* restart */
+type RestartCommand struct{}
+
+func (RestartCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
+  if len(args) == 0 {
+    err = SyntaxError("missing id argument")
+    return
+  }
+  var id int64
+  id, err = strconv.ParseInt(args[0], 10, 64)
+  if err != nil {
+    err = SyntaxError("invalid id argument")
+    return
+  }
+
+  var activity *Activity
+  activity, err = db.FindActivity(id)
+  if err != nil {
+    return
+  }
+  activity.Id = 0
+  activity.Start = c.Now()
+  activity.End = time.Time{}
+  err = db.SaveActivity(activity)
+  if err == nil {
+    output = fmt.Sprintf("restarted activity %d (new id: %d)", id, activity.Id)
+  }
+  return
+}
+
+func (RestartCommand) Help() string {
+  return restartHelp
 }
 
 /* stop */
@@ -324,7 +359,7 @@ func (EditCommand) Run(c Clock, db Database, args ...string) (output string, err
     var id int64
     id, err = strconv.ParseInt(args[0], 10, 64)
     if err != nil {
-      err = ErrSyntax("non-integer id")
+      err = SyntaxError("non-integer id")
       return
     }
 
@@ -340,7 +375,7 @@ func (EditCommand) Run(c Clock, db Database, args ...string) (output string, err
       if len(args) > 2 {
         activity.Name = strings.Join(args[2:], " ")
       } else {
-        err = ErrSyntax("name is required")
+        err = SyntaxError("name is required")
         return
       }
     case "project":
@@ -361,7 +396,7 @@ func (EditCommand) Run(c Clock, db Database, args ...string) (output string, err
           t, err = time.Parse(DateWithZoneFormat, dateString)
         }
         if err != nil {
-          err = ErrSyntax("invalid date")
+          err = SyntaxError("invalid date")
           return
         }
         if args[1] == "start" {
@@ -370,11 +405,11 @@ func (EditCommand) Run(c Clock, db Database, args ...string) (output string, err
           activity.End = t
         }
       } else {
-        err = ErrSyntax("date is required")
+        err = SyntaxError("date is required")
         return
       }
     default:
-      err = ErrSyntax("invalid field name")
+      err = SyntaxError("invalid field name")
       return
     }
 
@@ -384,7 +419,7 @@ func (EditCommand) Run(c Clock, db Database, args ...string) (output string, err
     }
     output = "ok"
   } else {
-    err = ErrSyntax("must have at least 3 arguments")
+    err = SyntaxError("must have at least 3 arguments")
   }
   return
 }
