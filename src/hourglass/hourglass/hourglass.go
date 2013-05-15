@@ -19,6 +19,7 @@ Usage:
 	%s [global-opts] command [arguments]
 
 Global options:
+
 	-sql	Use SQLite backend (default)
 	-csv	Use CSV backend
 
