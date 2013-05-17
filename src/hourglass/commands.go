@@ -15,6 +15,7 @@ const (
   listHelp = "Usage: %s list [all|week]\n\nList activities"
   editHelp = "Usage: %s edit <id> <name|project|tags|start|end> [value1[, [value2][, ...]]]\n\nEdit an activity\n\nFor the tags option, each tag should be a separate argument. Acceptable date formats are:\n\t2006-01-02 15:04\n\t2006-01-02 15:04 -0700"
   restartHelp = "Usage: %s restart <id>\n\nStart a new activity with all of the same values as another activity"
+  deleteHelp = "Usage: %s delete <id>\n\nDelete an activity"
 )
 
 /* edit date format */
@@ -426,4 +427,30 @@ func (EditCommand) Run(c Clock, db Database, args ...string) (output string, err
 
 func (EditCommand) Help() string {
   return editHelp
+}
+
+/* delete */
+type DeleteCommand struct{}
+
+func (DeleteCommand) Run(c Clock, db Database, args ...string) (output string, err error) {
+  if len(args) == 0 {
+    err = SyntaxError("missing id argument")
+    return
+  }
+  var id int64
+  id, err = strconv.ParseInt(args[0], 10, 64)
+  if err != nil {
+    err = SyntaxError("invalid id argument")
+    return
+  }
+
+  err = db.DeleteActivity(id)
+  if err == nil {
+    output = fmt.Sprint("deleted activity ", id)
+  }
+  return
+}
+
+func (DeleteCommand) Help() string {
+  return deleteHelp
 }

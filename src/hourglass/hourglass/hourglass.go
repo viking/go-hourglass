@@ -29,6 +29,7 @@ Commands:
 	start	Start an activity
 	stop	Stop an activity
 	edit	Edit an activity
+	delete	Delete an activity
 	restart	Restart an activity
 
 Use "%s help [command]" for more information about a command.
@@ -77,6 +78,8 @@ func main() {
     cmd = hourglass.EditCommand{}
   case "restart":
     cmd = hourglass.RestartCommand{}
+  case "delete":
+    cmd = hourglass.DeleteCommand{}
   default:
     fmt.Fprintln(os.Stderr, "Invalid command:", commandName)
     printUsage()

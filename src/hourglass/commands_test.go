@@ -141,6 +141,12 @@ func (db *fakeDb) FindActivitiesBetween(lower time.Time, upper time.Time) ([]*Ac
   return activities, nil
 }
 func (db *fakeDb) DeleteActivity(id int64) (err error) {
+  _, ok := db.activityMap[id]
+  if !ok {
+    err = ErrNotFound
+  } else {
+    delete(db.activityMap, id)
+  }
   return
 }
 
@@ -783,6 +789,72 @@ func TestEditCommand_Run(t *testing.T) {
 
 func TestEditCommand_Help(t *testing.T) {
   cmd := EditCommand{}
+  if cmd.Help() == "" {
+    t.Error("no help available")
+  }
+}
+
+/* delete command tests */
+var deleteTests = []struct {
+  activity *Activity
+  args []string
+  output string
+  err bool
+  syntaxErr bool
+}{
+
+  {nil, nil, "", true, true},
+  {nil, []string{"foo"}, "", true, true},
+  {nil, []string{"1"}, "", true, false},
+  {&Activity{Name: "foo"}, []string{"1"}, "deleted activity 1", false, false},
+}
+
+func TestDeleteCommand_Run(t *testing.T) {
+  for testNum, config := range deleteTests {
+    var err error
+
+    cmd := DeleteCommand{}
+    db := &fakeDb{}
+    c := fakeCmdClock{time.Now()}
+
+    if config.activity != nil {
+      err = db.SaveActivity(config.activity)
+      if err != nil {
+        t.Errorf("test %d: %s", testNum, err)
+        continue
+      }
+    }
+
+    output, err := cmd.Run(c, db, config.args...)
+
+    outputOk, diff, checkErr := checkStringsEqual(config.output, output)
+    if !outputOk {
+      if err == nil {
+        t.Errorf("test %d: bad output:\n%s", testNum, diff)
+      } else {
+        t.Errorf("test %d: output didn't match, but couldn't create diff: %s", testNum, checkErr)
+      }
+    }
+
+    if err != nil {
+      if !config.err {
+        t.Errorf("test %d: %s", testNum, err)
+      } else if config.syntaxErr {
+        _, ok := err.(SyntaxError)
+        if !ok {
+          t.Errorf("test %d: expected error type SyntaxError, got %T", testNum, err)
+        }
+      }
+      continue
+    }
+    if config.err {
+      t.Errorf("test %d: expected error, got nil", testNum)
+    }
+  }
+}
+
+func TestDeleteCommand_Help(t *testing.T) {
+  cmd := DeleteCommand{}
   if cmd.Help() == "" {
     t.Error("no help available")
   }
