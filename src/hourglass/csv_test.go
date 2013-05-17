@@ -261,3 +261,76 @@ func TestCsv_FindActivitiesBetween(t *testing.T) {
   }
   csvTestRun(f, t)
 }
+
+func TestCsv_DeleteActivity(t *testing.T) {
+  f := func(db *Csv) {
+    var err error
+    activity := &Activity{Name: "foo"}
+    err = db.SaveActivity(activity)
+    if err != nil {
+      t.Error(err)
+      return
+    }
+
+    err = db.DeleteActivity(activity.Id)
+    if err != nil {
+      t.Error(err)
+    }
+
+    _, err = db.FindActivity(activity.Id)
+    if err != ErrNotFound {
+      t.Errorf("expected ErrNotFound, got %v", err)
+    }
+  }
+  csvTestRun(f, t)
+}
+
+func TestCsv_DeleteActivity_FromMiddle(t *testing.T) {
+  f := func(db *Csv) {
+    var err error
+    activity_1 := &Activity{Name: "foo"}
+    err = db.SaveActivity(activity_1)
+    if err != nil {
+      t.Error(err)
+      return
+    }
+
+    activity_2 := &Activity{Name: "bar"}
+    err = db.SaveActivity(activity_2)
+    if err != nil {
+      t.Error(err)
+      return
+    }
+
+    err = db.DeleteActivity(activity_1.Id)
+    if err != nil {
+      t.Error(err)
+    }
+
+    _, err = db.FindActivity(activity_1.Id)
+    if err != ErrNotFound {
+      t.Errorf("expected ErrNotFound, got %v", err)
+    }
+
+    var foundActivity_2 *Activity
+    foundActivity_2, err = db.FindActivity(activity_2.Id)
+    if err != nil {
+      t.Error(err)
+    } else if !activity_2.Equal(foundActivity_2) {
+      t.Errorf("expected %v, got %v", activity_2, foundActivity_2)
+    }
+  }
+  csvTestRun(f, t)
+}
+
+func TestCsv_DeleteActivity_WithBadId(t *testing.T) {
+  f := func(db *Csv) {
+    var err error
+
+    err = db.DeleteActivity(123)
+    if err != ErrNotFound {
+      t.Errorf("expected ErrNotFound, got %v", err)
+    }
+  }
+  csvTestRun(f, t)
+}

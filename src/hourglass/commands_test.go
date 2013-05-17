@@ -140,6 +140,9 @@ func (db *fakeDb) FindActivitiesBetween(lower time.Time, upper time.Time) ([]*Ac
   sort.Sort(activities)
   return activities, nil
 }
+func (db *fakeDb) DeleteActivity(id int64) (err error) {
+  return
+}
 
 /* fake clock */
 type fakeCmdClock struct {

@@ -238,3 +238,23 @@ func (db *Sql) FindActivitiesBetween(lower time.Time, upper time.Time) (activiti
   activities, err = db.findActivities("WHERE start >= ? AND start < ?", lower, upper)
   return
 }
+
+func (db *Sql) DeleteActivity(id int64) (err error) {
+  var conn *sql.DB
+  conn, err = sql.Open(db.DriverName, db.DataSourceName)
+  if err != nil {
+    return
+  }
+  defer conn.Close()
+
+  var result sql.Result
+  result, err = db.exec(conn, "DELETE FROM activities WHERE id = ?", id)
+  if err == nil {
+    var n int64
+    n, err = result.RowsAffected()
+    if err == nil && n != 1 {
+      err = ErrNotFound
+    }
+  }
+  return
+}

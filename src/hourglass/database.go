@@ -32,4 +32,5 @@ type Database interface {
   FindAllActivities() ([]*Activity, error)
   FindRunningActivities() ([]*Activity, error)
   FindActivitiesBetween(time.Time, time.Time) ([]*Activity, error)
+  DeleteActivity(id int64) error
 }

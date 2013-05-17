@@ -248,3 +248,38 @@ func TestSql_FindActivitiesBetween(t *testing.T) {
   }
   sqlTestRun(f, t)
 }
+
+func TestSql_DeleteActivity(t *testing.T) {
+  f := func(db *Sql) {
+    var err error
+    activity := &Activity{Name: "foo"}
+    err = db.SaveActivity(activity)
+    if err != nil {
+      t.Error(err)
+      return
+    }
+
+    err = db.DeleteActivity(activity.Id)
+    if err != nil {
+      t.Error(err)
+    }
+
+    _, err = db.FindActivity(activity.Id)
+    if err != ErrNotFound {
+      t.Errorf("expected ErrNotFound, got %v", err)
+    }
+  }
+  sqlTestRun(f, t)
+}
+
+func TestSql_DeleteActivity_WithBadId(t *testing.T) {
+  f := func(db *Sql) {
+    var err error
+
+    err = db.DeleteActivity(123)
+    if err != ErrNotFound {
+      t.Errorf("expected ErrNotFound, got %v", err)
+    }
+  }
+  sqlTestRun(f, t)
+}

@@ -109,6 +109,33 @@ func (db *Csv) FindActivitiesBetween(lower time.Time, upper time.Time) (activiti
   return
 }
 
+func (db *Csv) DeleteActivity(id int64) (err error) {
+  var pos int64
+  var line []byte
+  pos, line, err = db.findActivityLine(id)
+  if err == io.EOF {
+    return ErrNotFound
+  }
+
+  /* read data past the line */
+  var data []byte
+  data, err = db.readAll(pos + int64(len(line)))
+  if err != nil {
+    return
+  }
+
+  err = db.writeBytes(pos, data)
+  if err != nil {
+    return
+  }
+
+  db.Mutex.Lock()
+  err = os.Truncate(db.Filename, pos + int64(len(data)))
+  db.Mutex.Unlock()
+
+  return
+}
+
 /* unexported functions */
 
 func (db *Csv) seekToHeader(f *os.File) (pos int64, err error) {
